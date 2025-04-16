@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Simulator Robot</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+    <h1>Simulator Robot System</h1>
+    <canvas id="simulator" width="600" height="400"></canvas>
+    <div class="controls">
+        <label>Target X: <input type="number" id="targetX" value="300"></label>
+        <label>Target Y: <input type="number" id="targetY" value="200"></label>
+        <label>Speed: <input type="number" id="speed" value="2"></label>
+        <button id="startBtn">Start Simulation</button>
+    </div>
+    <!-- เพิ่ม defer เพื่อให้แน่ใจว่า DOM โหลดเสร็จก่อน -->
+    <script type="module" src="/dist/main.js" defer></script>
+    <!-- เพิ่ม script test เพื่อตรวจสอบว่า JavaScript ทำงาน -->
+    <script>
+        console.log("Test if console works");
+        console.log("HTML loaded");
+    </script>
+</body>
+</html>
