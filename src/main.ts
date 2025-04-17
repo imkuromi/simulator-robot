@@ -28,40 +28,56 @@ document.addEventListener('DOMContentLoaded', () => {
         type Sensor = {
             distance: number;
             angle: number;
+            range: number;
         };
 
         // Then modify the sensors object to use this type
         const robot = {
-            x: canvas.width / 2,
-            y: canvas.height / 2,
+            x: parseInt((document.getElementById('startX') as HTMLInputElement)?.value || '300'),
+            y: parseInt((document.getElementById('startY') as HTMLInputElement)?.value || '300'),
             speed: 2,
             direction: 0,
             isMoving: false,
             radius: 25,
             sensors: {
-                front: { distance: 0, angle: 0 } as Sensor,
-                leftFront: { distance: 0, angle: Math.PI / 4 } as Sensor,
-                rightFront: { distance: 0, angle: -Math.PI / 4 } as Sensor,
+                front: { distance: 0, angle: 0, range: 80 },
+                leftFront: { distance: 0, angle: Math.PI / 3, range: 100 },
+                rightFront: { distance: 0, angle: -Math.PI / 3, range: 100 },
             },
-            sensorRange: 100,
+            sensorRange: 150,
             obstacles: [] as Array<{x: number, y: number, radius: number}>,
             state: 'exploring',
-            gridSize: 50, // ขนาดของกริด
-            coveredCells: new Set<string>(), // เซตเก็บเซลล์ที่ผ่านไปแล้ว
-            lastTurnTime: 0, // เวลาที่เลี้ยวครั้งล่าสุด
-            turnInterval: 2000, // ระยะเวลาระหว่างการเลี้ยว (ms)
-            coverage: 0 // เปอร์เซ็นต์พื้นที่ที่ผ่านไปแล้ว
+            gridSize: 50,
+            coveredCells: new Set<string>(),
+            lastTurnTime: 0,
+            turnInterval: 2000,
+            coverage: 0
         };
 
         // สร้างสิ่งกีดขวางสุ่ม
         function createRandomObstacles(count: number) {
             for (let i = 0; i < count; i++) {
-                const obstacle = {
-                    x: Math.random() * canvas.width,
-                    y: Math.random() * canvas.height,
-                    radius: 20 + Math.random() * 30
-                };
-                robot.obstacles.push(obstacle);
+                let isOverlapping = true;
+                let obstacle: { x: any; y: any; radius: any; };
+                
+                // พยายามสร้างสิ่งกีดขวางจนกว่าจะไม่ทับกับสิ่งกีดขวางอื่น
+                while (isOverlapping) {
+                    obstacle = {
+                        x: Math.random() * canvas.width,
+                        y: Math.random() * canvas.height,
+                        radius: 20 + Math.random() * 30
+                    };
+                    
+                    // ตรวจสอบการทับซ้อนกับสิ่งกีดขวางที่มีอยู่แล้ว
+                    isOverlapping = robot.obstacles.some(existingObstacle => {
+                        const dx = obstacle.x - existingObstacle.x;
+                        const dy = obstacle.y - existingObstacle.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        return distance < (obstacle.radius + existingObstacle.radius);
+                    });
+                }
+                
+                robot.obstacles.push(obstacle!);
             }
         }
 
@@ -90,12 +106,22 @@ document.addEventListener('DOMContentLoaded', () => {
             for (let x = 0; x <= canvas.width; x += robot.gridSize) {
                 ctx.moveTo(x, 0);
                 ctx.lineTo(x, canvas.height);
+                
+                // แสดงตัวเลขแกน X
+                ctx.fillStyle = 'black';
+                ctx.font = '10px Arial';
+                ctx.fillText(x.toString(), x + 5, 15);
             }
 
             // วาดเส้นแนวนอน
             for (let y = 0; y <= canvas.height; y += robot.gridSize) {
                 ctx.moveTo(0, y);
                 ctx.lineTo(canvas.width, y);
+                
+                // แสดงตัวเลขแกน Y
+                ctx.fillStyle = 'black';
+                ctx.font = '10px Arial';
+                ctx.fillText(y.toString(), 5, y - 5);
             }
 
             ctx.stroke();
@@ -106,6 +132,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 ctx.fillStyle = 'rgba(76, 175, 80, 0.1)';
                 ctx.fillRect(x * robot.gridSize, y * robot.gridSize, robot.gridSize, robot.gridSize);
             });
+
+            // แสดงขนาดของกริด
+            ctx.fillStyle = 'black';
+            ctx.font = '12px Arial';
+            ctx.fillText(`Grid Size: ${robot.gridSize}px`, canvas.width - 100, 15);
+            ctx.fillText(`Canvas: ${canvas.width}x${canvas.height}px`, canvas.width - 150, 30);
         }
 
         function drawRobot(x: number, y: number, direction: number) {
@@ -121,21 +153,9 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.strokeStyle = '#388E3C';
             ctx.lineWidth = 3;
             ctx.stroke();
-            // วาดเซนเซอร์และลำแสง
-            Object.keys(robot.sensors).forEach((key) => {
-                const sensor = robot.sensors[key as keyof typeof robot.sensors];
-                ctx.beginPath();
-                ctx.moveTo(0, 0);
-                const sensorX = Math.cos(sensor.angle) * robot.sensorRange;
-                const sensorY = Math.sin(sensor.angle) * robot.sensorRange;
-                ctx.lineTo(sensorX, sensorY);
-                
-                // สีของลำแสงเซนเซอร์ขึ้นอยู่กับระยะทาง
-                const alpha = 1 - (sensor.distance / robot.sensorRange);
-                ctx.strokeStyle = `rgba(255, 82, 82, ${alpha})`;
-                ctx.lineWidth = 2;
-                ctx.stroke();
 
+            // วาดเซนเซอร์และลำแสง
+            Object.entries(robot.sensors).forEach(([key, sensor]) => {
                 // วาดจุดเซนเซอร์
                 ctx.beginPath();
                 ctx.arc(
@@ -145,6 +165,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 );
                 ctx.fillStyle = '#FF5252';
                 ctx.fill();
+
+                // วาดลำแสงเซนเซอร์
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                const sensorX = Math.cos(sensor.angle) * sensor.range;
+                const sensorY = Math.sin(sensor.angle) * sensor.range;
+                ctx.lineTo(sensorX, sensorY);
+                
+                // สีของลำแสงขึ้นอยู่กับระยะทางที่ตรวจจับได้
+                const alpha = 0.5; // ตั้งค่า alpha เป็นค่าคงที่ 0.5 เพื่อให้เห็นชัดเจน
+                ctx.strokeStyle = `rgba(255, 82, 82, ${alpha})`;
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // แสดงระยะทางที่ตรวจจับได้
+                ctx.fillStyle = 'black';
+                ctx.font = '10px Arial';
+                ctx.fillText(`${sensor.distance.toFixed(0)}`, sensorX + 5, sensorY + 5);
             });
 
             // วาดตา
@@ -236,72 +274,11 @@ document.addEventListener('DOMContentLoaded', () => {
             robot.state = minDistance < robot.radius * 2 ? 'avoiding' : 'exploring';
         }
 
-        function validateRobotState() {
-            // ตรวจสอบตำแหน่ง
-            if (isNaN(robot.x) || isNaN(robot.y)) {
-                console.warn('Invalid robot position, resetting to center');
-                robot.x = canvas.width / 2;
-                robot.y = canvas.height / 2;
-            }
-
-            // ตรวจสอบทิศทาง
-            if (isNaN(robot.direction)) {
-                console.warn('Invalid robot direction, resetting to 0');
-                robot.direction = 0;
-            }
-
-            // ตรวจสอบความเร็ว
-            if (robot.speed < 0 || robot.speed > 5) {
-                console.warn('Invalid robot speed, resetting to default');
-                robot.speed = 2;
-            }
-
-            // ตรวจสอบเซนเซอร์
-            Object.entries(robot.sensors).forEach(([key, sensor]) => {
-                if (isNaN(sensor.distance) || isNaN(sensor.angle)) {
-                    console.warn(`Invalid sensor ${key} values, resetting`);
-                    sensor.distance = robot.sensorRange;
-                    sensor.angle = robot.sensors[key as keyof typeof robot.sensors].angle;
-                }
-            });
-        }
-
-        function checkBoundaries() {
-            const margin = robot.radius + 10; // เพิ่มระยะเผื่อ 10 พิกเซล
-            
-            // ตรวจสอบขอบซ้าย
-            if (robot.x < margin) {
-                robot.x = margin;
-                robot.direction = Math.PI / 2; // หันไปทางขวา
-            }
-            
-            // ตรวจสอบขอบขวา
-            if (robot.x > canvas.width - margin) {
-                robot.x = canvas.width - margin;
-                robot.direction = -Math.PI / 2; // หันไปทางซ้าย
-            }
-            
-            // ตรวจสอบขอบบน
-            if (robot.y < margin) {
-                robot.y = margin;
-                robot.direction = 0; // หันลง
-            }
-            
-            // ตรวจสอบขอบล่าง
-            if (robot.y > canvas.height - margin) {
-                robot.y = canvas.height - margin;
-                robot.direction = Math.PI; // หันขึ้น
-            }
-        }
-
         function moveRobot() {
             if (!robot.isMoving) return;
 
-            // ตรวจสอบความถูกต้องของข้อมูล
-            validateRobotState();
-            
             checkSensors();
-            
+
             // บันทึกเซลล์ปัจจุบัน
             const currentCell = getCellPosition(robot.x, robot.y);
             robot.coveredCells.add(currentCell);
@@ -315,11 +292,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     robot.direction -= 0.1;
                 }
                 
-                // คำนวณความเร็วที่ปลอดภัย
-                const minDistance = Math.min(...Object.entries(robot.sensors).map(([_, s]) => s.distance));
-                const safeSpeed = Math.min(robot.speed, minDistance / 10);
-                robot.x += Math.cos(robot.direction) * safeSpeed;
-                robot.y += Math.sin(robot.direction) * safeSpeed;
+                const currentSpeed = robot.speed * (Math.min(...Object.entries(robot.sensors).map(([_, s]) => s.distance)) / robot.sensorRange);
+                robot.x += Math.cos(robot.direction) * currentSpeed;
+                robot.y += Math.sin(robot.direction) * currentSpeed;
             } else {
                 // เคลื่อนที่ปกติ
                 robot.x += Math.cos(robot.direction) * robot.speed;
@@ -328,7 +303,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // ตรวจสอบเวลาที่ผ่านไปตั้งแต่เลี้ยวครั้งล่าสุด
                 const currentTime = Date.now();
                 if (currentTime - robot.lastTurnTime > robot.turnInterval) {
-                    // เลือกทิศทางใหม่
+                    // เลี้ยวแบบสุ่มแต่มีแนวโน้มไปทางพื้นที่ที่ยังไม่ได้ผ่าน
                     const currentCellX = Math.floor(robot.x / robot.gridSize);
                     const currentCellY = Math.floor(robot.y / robot.gridSize);
                     
@@ -362,14 +337,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            // ตรวจสอบขอบเขต
-            checkBoundaries();
+            // ป้องกันการออกนอกขอบ canvas
+            robot.x = Math.max(robot.radius, Math.min(canvas.width - robot.radius, robot.x));
+            robot.y = Math.max(robot.radius, Math.min(canvas.height - robot.radius, robot.y));
         }
 
         function update() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // วาดกริดและพื้นที่ที่ผ่านไปแล้ว
+            // วาดกริด
             drawGrid();
             
             // วาดสิ่งกีดขวาง
@@ -381,10 +357,10 @@ document.addEventListener('DOMContentLoaded', () => {
             // วาดหุ่นยนต์
             drawRobot(robot.x, robot.y, robot.direction);
 
-            // แสดงเปอร์เซ็นต์พื้นที่ที่ผ่านไปแล้ว
+            // แสดงข้อมูล
             ctx.fillStyle = 'black';
-            ctx.font = '16px Arial';
-            ctx.fillText(`Coverage: ${robot.coverage.toFixed(1)}%`, 10, 30);
+            ctx.font = '12px Arial';
+            ctx.fillText(`Coverage: ${robot.coverage.toFixed(1)}%`, 10, 20);
 
             requestAnimationFrame(update);
         }
