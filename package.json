@@ -2,7 +2,8 @@
   "name": "simulator-robot",
   "version": "1.0.0",
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "dev" : "tsc --watch"
   },
   "devDependencies": {
     "typescript": "^5.8.3"

@@ -1,5 +1,6 @@
-import { Robot } from './robot';
-
+// ============================== //
+//        INITIAL LOGGING         //
+// ============================== //
 // เพิ่ม console.log ตั้งแต่เริ่มต้น
 console.log("Script starting...");
 
@@ -11,15 +12,18 @@ setTimeout(() => {
     console.log("2. Delayed log");
 }, 1000);
 
+// ============================== //
+//      DOM READY LOGIC START     //
+// ============================== //
 document.addEventListener('DOMContentLoaded', () => {
     // ทดสอบ console.log ทันทีที่ DOM โหลด
     console.log("3. DOM Content Loaded");
-    
+
     // ทดสอบการเข้าถึง canvas
     const canvas = document.getElementById('simulator') as HTMLCanvasElement;
     const ctx = canvas.getContext('2d')!;
     console.log("4. Canvas element:", canvas);
-    
+
     if (canvas) {
         console.log("5. Canvas found");
         console.log("6. Canvas context:", ctx);
@@ -30,6 +34,9 @@ document.addEventListener('DOMContentLoaded', () => {
             angle: number;
         };
 
+        // ============================== //
+        //      ROBOT INITIAL SETUP       //
+        // ============================== //
         // Then modify the sensors object to use this type
         const robot = {
             x: canvas.width / 2,
@@ -44,7 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 rightFront: { distance: 0, angle: -Math.PI / 4 } as Sensor,
             },
             sensorRange: 100,
-            obstacles: [] as Array<{x: number, y: number, radius: number}>,
+            obstacles: [] as Array<{ x: number, y: number, radius: number }>,
             state: 'exploring',
             gridSize: 50, // ขนาดของกริด
             coveredCells: new Set<string>(), // เซตเก็บเซลล์ที่ผ่านไปแล้ว
@@ -53,6 +60,9 @@ document.addEventListener('DOMContentLoaded', () => {
             coverage: 0 // เปอร์เซ็นต์พื้นที่ที่ผ่านไปแล้ว
         };
 
+        // ============================== //
+        //       OBSTACLE GENERATION      //
+        // ============================== //
         // สร้างสิ่งกีดขวางสุ่ม
         function createRandomObstacles(count: number) {
             for (let i = 0; i < count; i++) {
@@ -68,6 +78,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // สร้างสิ่งกีดขวาง 5 ชิ้น
         createRandomObstacles(5);
 
+        // ============================== //
+        //      GRID + COVERAGE LOGIC     //
+        // ============================== //
         // ฟังก์ชันคำนวณตำแหน่งเซลล์
         function getCellPosition(x: number, y: number): string {
             const cellX = Math.floor(x / robot.gridSize);
@@ -81,6 +94,9 @@ document.addEventListener('DOMContentLoaded', () => {
             return (robot.coveredCells.size / totalCells) * 100;
         }
 
+        // ============================== //
+        //          DRAW FUNCTIONS        //
+        // ============================== //
         function drawGrid() {
             ctx.beginPath();
             ctx.strokeStyle = 'rgba(200, 200, 200, 0.2)';
@@ -129,7 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const sensorX = Math.cos(sensor.angle) * robot.sensorRange;
                 const sensorY = Math.sin(sensor.angle) * robot.sensorRange;
                 ctx.lineTo(sensorX, sensorY);
-                
+
                 // สีของลำแสงเซนเซอร์ขึ้นอยู่กับระยะทาง
                 const alpha = 1 - (sensor.distance / robot.sensorRange);
                 ctx.strokeStyle = `rgba(255, 82, 82, ${alpha})`;
@@ -176,11 +192,14 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
+        // ============================== //
+        //        SENSOR CHECKING         //
+        // ============================== //
         function checkSensors() {
             // ตรวจสอบระยะห่างจากสิ่งกีดขวางสำหรับแต่ละเซนเซอร์
             Object.entries(robot.sensors).forEach(([_, sensor]) => {
                 sensor.distance = robot.sensorRange;
-                
+
                 // ตรวจสอบระยะห่างจากขอบ canvas
                 const absoluteAngle = robot.direction + sensor.angle;
                 const sensorX = robot.x + Math.cos(absoluteAngle) * robot.sensorRange;
@@ -220,7 +239,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const dx = obstacle.x - robot.x;
                     const dy = obstacle.y - robot.y;
                     const distance = Math.sqrt(dx * dx + dy * dy) - obstacle.radius - robot.radius;
-                    
+
                     if (distance < sensor.distance) {
                         const angleToObstacle = Math.atan2(dy, dx);
                         const angleDiff = Math.abs(angleToObstacle - (robot.direction + sensor.angle));
@@ -236,6 +255,9 @@ document.addEventListener('DOMContentLoaded', () => {
             robot.state = minDistance < robot.radius * 2 ? 'avoiding' : 'exploring';
         }
 
+        // ============================== //
+        //         VALIDATION LOGIC       //
+        // ============================== //
         function validateRobotState() {
             // ตรวจสอบตำแหน่ง
             if (isNaN(robot.x) || isNaN(robot.y)) {
@@ -266,27 +288,30 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
+        // ============================== //
+        //       BOUNDARY ENFORCEMENT     //
+        // ============================== //
         function checkBoundaries() {
             const margin = robot.radius + 10; // เพิ่มระยะเผื่อ 10 พิกเซล
-            
+
             // ตรวจสอบขอบซ้าย
             if (robot.x < margin) {
                 robot.x = margin;
                 robot.direction = Math.PI / 2; // หันไปทางขวา
             }
-            
+
             // ตรวจสอบขอบขวา
             if (robot.x > canvas.width - margin) {
                 robot.x = canvas.width - margin;
                 robot.direction = -Math.PI / 2; // หันไปทางซ้าย
             }
-            
+
             // ตรวจสอบขอบบน
             if (robot.y < margin) {
                 robot.y = margin;
                 robot.direction = 0; // หันลง
             }
-            
+
             // ตรวจสอบขอบล่าง
             if (robot.y > canvas.height - margin) {
                 robot.y = canvas.height - margin;
@@ -294,14 +319,17 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
+        // ============================== //
+        //         MOVEMENT LOGIC         //
+        // ============================== //
         function moveRobot() {
             if (!robot.isMoving) return;
 
             // ตรวจสอบความถูกต้องของข้อมูล
             validateRobotState();
-            
+
             checkSensors();
-            
+
             // บันทึกเซลล์ปัจจุบัน
             const currentCell = getCellPosition(robot.x, robot.y);
             robot.coveredCells.add(currentCell);
@@ -314,7 +342,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     robot.direction -= 0.1;
                 }
-                
+
                 // คำนวณความเร็วที่ปลอดภัย
                 const minDistance = Math.min(...Object.entries(robot.sensors).map(([_, s]) => s.distance));
                 const safeSpeed = Math.min(robot.speed, minDistance / 10);
@@ -331,7 +359,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     // เลือกทิศทางใหม่
                     const currentCellX = Math.floor(robot.x / robot.gridSize);
                     const currentCellY = Math.floor(robot.y / robot.gridSize);
-                    
+
                     // ตรวจสอบพื้นที่รอบๆ
                     const nearbyCells = [
                         getCellPosition(robot.x + robot.gridSize, robot.y),
@@ -339,13 +367,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         getCellPosition(robot.x, robot.y + robot.gridSize),
                         getCellPosition(robot.x, robot.y - robot.gridSize)
                     ];
-                    
+
                     // เลือกทิศทางที่มีพื้นที่ที่ยังไม่ได้ผ่านมากที่สุด
                     const unexploredDirections = nearbyCells.map(cell => ({
                         cell,
                         explored: robot.coveredCells.has(cell)
                     }));
-                    
+
                     const unexploredCount = unexploredDirections.filter(d => !d.explored).length;
                     if (unexploredCount > 0) {
                         // เลือกทิศทางที่ยังไม่ได้สำรวจ
@@ -357,7 +385,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         // ถ้าทุกทิศทางผ่านไปแล้ว ให้เลี้ยวแบบสุ่ม
                         robot.direction += (Math.random() - 0.5) * Math.PI;
                     }
-                    
+
                     robot.lastTurnTime = currentTime;
                 }
             }
@@ -366,18 +394,21 @@ document.addEventListener('DOMContentLoaded', () => {
             checkBoundaries();
         }
 
+        // ============================== //
+        //        ANIMATION FRAME         //
+        // ============================== //
         function update() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
+
             // วาดกริดและพื้นที่ที่ผ่านไปแล้ว
             drawGrid();
-            
+
             // วาดสิ่งกีดขวาง
             drawObstacles();
-            
+
             // เคลื่อนที่หุ่นยนต์
             moveRobot();
-            
+
             // วาดหุ่นยนต์
             drawRobot(robot.x, robot.y, robot.direction);
 
@@ -389,6 +420,9 @@ document.addEventListener('DOMContentLoaded', () => {
             requestAnimationFrame(update);
         }
 
+        // ============================== //
+        //         UI INTERACTIONS        //
+        // ============================== //
         // ปุ่มควบคุม
         const startBtn = document.getElementById('startBtn') as HTMLButtonElement;
         if (startBtn) {
@@ -404,7 +438,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+// ============================== //
+//         WINDOW ONLOAD          //
+// ============================== //
 // ทดสอบ console.log ใน window.onload
 window.onload = () => {
     console.log("7. Window loaded");
 };
+
+// ============================== //
+//     FINAL LOAD CONFIRMATION    //
+// ============================== //
+console.log("Script loaded and DOMContentLoaded event listener added");
