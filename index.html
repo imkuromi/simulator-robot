@@ -1,26 +1,50 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Simulator Robot</title>
-    <link rel="stylesheet" href="style.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Manual Robot Control</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+
+            margin: 0;
+        }
+
+        canvas {
+            border: 1px solid black;
+        }
+
+        .controls {
+            margin-top: 10px;
+        }
+
+        .controls button {
+            margin: 0 5px;
+        }
+    </style>
+    <script src="dist/main.js"></script>
 </head>
+
 <body>
     <h1>Simulator Robot System</h1>
     <canvas id="simulator" width="600" height="400"></canvas>
     <div class="controls">
-        <label>Target X: <input type="number" id="targetX" value="300"></label>
-        <label>Target Y: <input type="number" id="targetY" value="200"></label>
-        <label>Speed: <input type="number" id="speed" value="2"></label>
-        <button id="startBtn">Start Simulation</button>
+        <button id="moveUp">Up</button>
+        <button id="moveLeft">Left</button>
+        <button id="moveRight">Right</button>
+        <button id="moveDown">Down</button>
+        <button id="rotateLeft">Rotate Left</button>
+        <button id="rotateRight">Rotate Right</button>
+        <button id="createObstacles">Create Obstacles</button>
+        <button id="clearObstacles">Clear Obstacles</button>
     </div>
-    <!-- เพิ่ม defer เพื่อให้แน่ใจว่า DOM โหลดเสร็จก่อน -->
-    <script type="module" src="/dist/main.js" defer></script>
-    <!-- เพิ่ม script test เพื่อตรวจสอบว่า JavaScript ทำงาน -->
-    <script>
-        console.log("Test if console works");
-        console.log("HTML loaded");
-    </script>
+    <!-- Removed the script block at the bottom of the body -->
 </body>
+
 </html>
