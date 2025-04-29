@@ -28,13 +28,14 @@
             margin: 0 5px;
         }
     </style>
-    <script src="dist/main.js"></script>
 </head>
 
 <body>
     <h1>Simulator Robot System</h1>
-    <canvas id="simulator" width="600" height="400"></canvas>
-    <div class="controls">
+    <canvas id="simulator"></canvas>
+    <script type="module" src="dist/main.js"></script>
+
+    <!-- <div class="controls">
         <button id="moveUp">Up</button>
         <button id="moveLeft">Left</button>
         <button id="moveRight">Right</button>
@@ -43,8 +44,7 @@
         <button id="rotateRight">Rotate Right</button>
         <button id="createObstacles">Create Obstacles</button>
         <button id="clearObstacles">Clear Obstacles</button>
-    </div>
-    <!-- Removed the script block at the bottom of the body -->
+    </div> -->
 </body>
 
 </html>
