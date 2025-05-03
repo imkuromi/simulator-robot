@@ -6,12 +6,12 @@ window.addEventListener("DOMContentLoaded", () => {
     canvas.width = MAP_DIMENSIONS[0];
     canvas.height = MAP_DIMENSIONS[1];
     const mapImage = new Image();
-    mapImage.src = "images/map.png";
+    mapImage.src = "images/map_2.png";
     const robotImage = new Image();
-    robotImage.src = "images/robot_cir.png";
+    robotImage.src = "images/robot.png";
     const start = [100, 300];
     const robot = new Robot(start, 0.01 * 3779.52);
-    const sensorRange = [250, (40 * Math.PI) / 180];
+    const sensorRange = [250, (Math.PI) / 9];
     const ultrasonic = new Ultrasonic(sensorRange, canvas);
     let lastTime = performance.now();
     function drawRobot(x, y, heading) {
