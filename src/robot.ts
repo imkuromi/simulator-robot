@@ -74,7 +74,7 @@ export class Robot {
     kinematics(dt: number) {
         console.log(`Before kinematics: x: ${this.x}, y: ${this.y}, heading: ${this.heading}`);
         this.x += ((this.vl + this.vr) / 2) * Math.cos(this.heading) * dt;
-        this.y += ((this.vl + this.vr) / 2) * Math.sin(this.heading) * dt;
+        this.y -= ((this.vl + this.vr) / 2) * Math.sin(this.heading) * dt;
         this.heading += (this.vr - this.vl) / this.w * dt;
 
         // if (Math.abs(this.heading) > 2 * Math.PI) this.heading = 0;
@@ -114,7 +114,7 @@ export class Ultrasonic {
             let angle = start_angle + (i * (finish_angle - start_angle)) / index;
             console.log("Angle:", angle);
             let x2 = x1 + this.sensor_range[0] * Math.cos(angle);
-            let y2 = y1 + this.sensor_range[0] * Math.sin(angle);
+            let y2 = y1 - this.sensor_range[0] * Math.sin(angle);
             console.log(`x2: ${x2}, y2: ${y2}`);
 
             for (let j = 0; j < 100; j++) {

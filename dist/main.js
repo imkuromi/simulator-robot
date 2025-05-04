@@ -17,7 +17,7 @@ window.addEventListener("DOMContentLoaded", () => {
     function drawRobot(x, y, heading) {
         ctx.save();
         ctx.translate(x, y);
-        ctx.rotate(heading);
+        ctx.rotate(-heading);
         ctx.drawImage(robotImage, -robotImage.width / 2, -robotImage.height / 2);
         ctx.restore();
     }
