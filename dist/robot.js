@@ -39,18 +39,18 @@ export class Robot {
         }
     }
     moveForward() {
-        this.vr = this.minspeed;
-        this.vl = this.minspeed;
+        this.vr = (this.minspeed);
+        this.vl = (this.minspeed);
     }
     moveBackward() {
-        this.vr = -this.minspeed;
-        this.vl = -this.minspeed / 2;
+        this.vr = (-this.minspeed);
+        this.vl = (-(this.minspeed) / 2);
     }
     kinematics(dt) {
-        this.x += ((this.vl + this.vr) / 2) * Math.cos(this.heading) * dt;
-        this.y -= ((this.vl + this.vr) / 2) * Math.sin(this.heading) * dt;
-        this.heading += (this.vr - this.vl) / this.w * dt;
-        if (Math.abs(this.heading) > 2 * Math.PI)
+        this.x += (((this.vl + this.vr) / 2) * Math.cos(this.heading) * dt);
+        this.y -= (((this.vl + this.vr) / 2) * Math.sin(this.heading) * dt);
+        this.heading += (((this.vr - this.vl) / this.w) * dt);
+        if ((Math.abs(this.heading) > (2 * Math.PI)))
             this.heading = 0;
         this.vr = Math.max(Math.min(this.maxspeed, this.vr), this.minspeed);
         this.vl = Math.max(Math.min(this.maxspeed, this.vl), this.minspeed);
@@ -66,16 +66,16 @@ export class Ultrasonic {
     }
     senseObstacles(x1, y1, heading) {
         const obstacles = [];
-        const start_angle = heading - this.sensor_range[1];
-        const finish_angle = heading + this.sensor_range[1];
+        const start_angle = (heading - this.sensor_range[1]);
+        const finish_angle = (heading + this.sensor_range[1]);
         for (let i = 0; i < 10; i++) {
-            const angle = start_angle + (i * (finish_angle - start_angle)) / 10;
-            const x2 = x1 + this.sensor_range[0] * Math.cos(angle);
-            const y2 = y1 - this.sensor_range[0] * Math.sin(angle);
+            const angle = (start_angle + (i * (finish_angle - start_angle)) / 10);
+            const x2 = (x1 + this.sensor_range[0] * Math.cos(angle));
+            const y2 = (y1 - this.sensor_range[0] * Math.sin(angle));
             for (let j = 0; j < 100; j++) {
-                const u = j / 100;
-                const x = Math.floor(x2 * u + x1 * (1 - u));
-                const y = Math.floor(y2 * u + y1 * (1 - u));
+                const u = (j / 100);
+                const x = Math.floor((x2 * u + x1 * (1 - u)));
+                const y = Math.floor((y2 * u + y1 * (1 - u)));
                 if (x > 0 && y > 0 && x < this.mapWidth && y < this.mapHeight) {
                     const imageData = this.ctx.getImageData(x, y, 1, 1).data;
                     this.ctx.fillStyle = "rgba(0,255,255,0.4)";
