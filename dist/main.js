@@ -6,19 +6,19 @@ window.addEventListener("DOMContentLoaded", () => {
     canvas.width = MAP_DIMENSIONS[0];
     canvas.height = MAP_DIMENSIONS[1];
     const mapImage = new Image();
-    mapImage.src = "images/map_2.png";
+    mapImage.src = "images/map_3.png";
     const robotImage = new Image();
     robotImage.src = "images/robot.png";
     const start = [100, 300];
     const robot = new Robot(start, 0.01 * 3779.52);
-    const sensorRange = [250, (Math.PI) / 9];
+    const sensorRange = [250, (Math.PI) / 6];
     const ultrasonic = new Ultrasonic(sensorRange, canvas);
     let lastTime = performance.now();
     function drawRobot(x, y, heading) {
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(-heading);
-        ctx.drawImage(robotImage, -robotImage.width / 2, -robotImage.height / 2);
+        ctx.drawImage(robotImage, -robot.w * 2, -robot.w);
         ctx.restore();
     }
     function drawSensorData(pointCloud) {
@@ -34,6 +34,8 @@ window.addEventListener("DOMContentLoaded", () => {
         lastTime = timestamp;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(mapImage, 0, 0);
+        // ctx.fillStyle = "red"
+        // ctx.fillRect(robot.x, robot.y, robot.w, robot.w)
         robot.kinematics(dt);
         drawRobot(robot.x, robot.y, robot.heading);
         const pointCloud = ultrasonic.senseObstacles(robot.x, robot.y, robot.heading);
