@@ -14,13 +14,13 @@ export class Robot {
         this.y = startpos[1];
         this.vl = 0.01 * this.m2p;
         this.vr = 0.01 * this.m2p;
-        this.maxspeed = 0.02 * this.m2p;
+        this.maxspeed = 0.01 * this.m2p;
         this.minspeed = 0.01 * this.m2p;
     }
     avoidObstacles(pointCloud, dt) {
         let closestObs = null;
         let dist = Infinity;
-        if (pointCloud.length > 1) {
+        if (pointCloud.length >= 1) {
             for (const point of pointCloud) {
                 const d = distance([this.x, this.y], point);
                 if (d < dist) {
@@ -68,8 +68,8 @@ export class Ultrasonic {
         const obstacles = [];
         const start_angle = (heading - this.sensor_range[1]);
         const finish_angle = (heading + this.sensor_range[1]);
-        for (let i = 0; i < 10; i++) {
-            const angle = (start_angle + (i * (finish_angle - start_angle)) / 10);
+        for (let i = 0; i < 100; i++) {
+            const angle = (start_angle + (i * (finish_angle - start_angle)) / 100);
             const x2 = (x1 + this.sensor_range[0] * Math.cos(angle));
             const y2 = (y1 - this.sensor_range[0] * Math.sin(angle));
             for (let j = 0; j < 100; j++) {

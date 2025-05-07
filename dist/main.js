@@ -9,10 +9,10 @@ window.addEventListener("DOMContentLoaded", () => {
     const mapImage = new Image();
     mapImage.src = "images/map.png";
     const robotImage = new Image();
-    robotImage.src = "images/robot.png";
+    robotImage.src = "images/robot1.png";
     const start = [100, 300];
     const robot = new Robot(start, 0.01 * 3779.52);
-    const sensorRange = [250, (40 * Math.PI) / 180];
+    const sensorRange = [200, (30 * Math.PI) / 180];
     //ตรวจจับได้ไกล 250px และมุมตรวจจับ 40 องศา (แปลงเป็นเรเดียน)
     //(40 * Math.PI) / 180 เป็นสูตรที่ใช้ แปลงองศา (degrees) เป็นเรเดียน (radians)
     //เพราะใน JavaScript (และคณิตศาสตร์ทั่วไป) มุมในฟังก์ชันตรีโกณมิติเช่น Math.sin(), Math.cos() ฯลฯ ต้องอยู่ใน

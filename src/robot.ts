@@ -23,7 +23,7 @@ export class Robot {
         this.y = startpos[1];
         this.vl = 0.01 * this.m2p;
         this.vr = 0.01 * this.m2p;
-        this.maxspeed = 0.02 * this.m2p;
+        this.maxspeed = 0.01 * this.m2p;
         this.minspeed = 0.01 * this.m2p;
     }
 
@@ -31,7 +31,7 @@ export class Robot {
         let closestObs: [number, number] | null = null;
         let dist = Infinity;
 
-        if (pointCloud.length > 1) {
+        if (pointCloud.length >= 1) {
             for (const point of pointCloud) {
                 const d = distance([this.x, this.y], point);
                 if (d < dist) {
@@ -39,7 +39,7 @@ export class Robot {
                     closestObs = point;
                 }
             }
-            if (closestObs && dist < this.min_obs_dist && this.count_down > 0) {
+            if (closestObs && dist < this.min_obs_dist && this.count_down > 0) { 
                 this.count_down -= dt;
                 this.moveBackward();
             } else {
@@ -85,14 +85,15 @@ export class Ultrasonic {
         this.mapWidth = canvas.width;
         this.mapHeight = canvas.height;
     }
+    
 
     senseObstacles(x1: number, y1: number, heading: number): [number, number][] {
         const obstacles: [number, number][] = [];
         const start_angle = (heading - this.sensor_range[1]);
         const finish_angle = (heading + this.sensor_range[1]);
 
-        for (let i = 0; i < 10; i++) {
-            const angle = (start_angle + (i * (finish_angle - start_angle)) / 10);
+        for (let i = 0; i < 100; i++) {
+            const angle = (start_angle + (i * (finish_angle - start_angle)) / 100);
             const x2 = (x1 + this.sensor_range[0] * Math.cos(angle));
             const y2 = (y1 - this.sensor_range[0] * Math.sin(angle));
 
