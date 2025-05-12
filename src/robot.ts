@@ -14,7 +14,7 @@ export class Robot {
     vr: number;
     maxspeed: number;
     minspeed: number;
-    min_obs_dist = 100;
+    min_obs_dist = 60;
     count_down = 5;
 
     constructor(startpos: [number, number], width: number) {

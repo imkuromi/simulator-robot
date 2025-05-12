@@ -7,7 +7,7 @@ export class Robot {
     constructor(startpos, width) {
         this.m2p = 3779.52;
         this.heading = 0;
-        this.min_obs_dist = 100;
+        this.min_obs_dist = 60;
         this.count_down = 5;
         this.w = width;
         this.x = startpos[0];
