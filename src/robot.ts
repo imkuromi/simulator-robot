@@ -87,6 +87,7 @@ export class Robot {
         this.vl = Math.max(Math.min(this.maxspeed, this.vl), this.minspeed);
         // console.log(`After kinematics: x: ${this.x}, y: ${this.y}, heading: ${this.heading}`);
     }
+
 }
 
 export class Ultrasonic {
