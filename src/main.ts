@@ -2,21 +2,19 @@ import { Robot, Ultrasonic } from "./robot.js";
 
 window.addEventListener("DOMContentLoaded", () => {
     const canvas = document.getElementById("simulator") as HTMLCanvasElement;
-
-    const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
-    const MAP_DIMENSIONS: [number, number] = [800, 600];
-    canvas.width = MAP_DIMENSIONS[0];
-    canvas.height = MAP_DIMENSIONS[1];
-
     const mapImage = new Image();
-    mapImage.src = "images/map_3.png";
+    mapImage.src = "images/map_4.png";
 
     const robotImage = new Image();
     robotImage.src = "images/robot.png";
+    const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
+    const MAP_DIMENSIONS: [number, number] = [mapImage.width, mapImage.height];
+    canvas.width = MAP_DIMENSIONS[0];
+    canvas.height = MAP_DIMENSIONS[1];
 
     const start: [number, number] = [100, 300];
     const robot = new Robot(start, 0.01 * 3779.52);
-    const sensorRange: [number, number] = [250, (Math.PI) / 6];
+    const sensorRange: [number, number] = [150, (Math.PI) / 4];
     const ultrasonic = new Ultrasonic(sensorRange, canvas);
 
     let lastTime = performance.now();
@@ -49,7 +47,7 @@ window.addEventListener("DOMContentLoaded", () => {
         robot.kinematics(dt);
         drawRobot(robot.x, robot.y, robot.heading);
 
-        const pointCloud = ultrasonic.senseObstacles(robot.x, robot.y, robot.heading);
+        const pointCloud = ultrasonic.senseObstacles(robot.x, robot.y, robot.heading, 20);
         robot.avoidObstacles(pointCloud, dt);
         drawSensorData(pointCloud);
 

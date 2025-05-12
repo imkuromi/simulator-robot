@@ -7,7 +7,7 @@ export class Robot {
     constructor(startpos, width) {
         this.m2p = 3779.52;
         this.heading = 0;
-        this.min_obs_dist = 100;
+        this.min_obs_dist = 60;
         this.count_down = 5;
         this.w = width;
         this.x = startpos[0];
@@ -82,14 +82,13 @@ export class Ultrasonic {
         this.mapWidth = canvas.width;
         this.mapHeight = canvas.height;
     }
-    senseObstacles(x, y, heading) {
+    senseObstacles(x, y, heading, index) {
         let obstacles = [];
         let start_angle = heading - this.sensor_range[1];
         let finish_angle = heading + this.sensor_range[1];
         // console.log(`start_angle: ${start_angle}, finish_angle: ${finish_angle}`)
         let x1 = x;
         let y1 = y;
-        let index = 15;
         for (let i = 0; i < index; i++) {
             // let angle = start_angle + (i * (finish_angle - start_angle)) / index;
             let angle = start_angle + ((i + 0.5) * (finish_angle - start_angle)) / index;
@@ -110,7 +109,7 @@ export class Ultrasonic {
                     this.ctx.fillRect(x, y, 2, 1);
                     // console.log("before color :")
                     // console.log(imageData)
-                    if (imageData[0] === 0 && imageData[1] === 0 && imageData[2] === 0) {
+                    if (imageData[0] < 20 && imageData[1] < 20 && imageData[2] < 20) {
                         // console.log(`after : ${imageData}`)
                         // console.log("Obstacle detected at:", x, y);
                         obstacles.push([x, y]);
@@ -118,7 +117,7 @@ export class Ultrasonic {
                     }
                 }
             }
-            console.log("Distance : ", distance);
+            // console.log("Distance : ", distance)
         }
         // console.log("obstacles")
         // console.log(obstacles)
