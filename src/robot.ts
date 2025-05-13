@@ -60,7 +60,19 @@ export class Robot {
             }
         }
     }
+    distanceTo(target: [number, number]): number {
+        return distance([this.x, this.y], target);
+    }
 
+    moveToward(tx: number, ty: number, dt: number) {
+        const angleToTarget = Math.atan2(ty - this.y, tx - this.x);
+        const angleDiff = angleToTarget - this.heading;
+        const maxTurn = 2 * dt;
+        this.heading += Math.max(-maxTurn, Math.min(maxTurn, angleDiff));
+        const speed = this.minspeed;
+        this.x += Math.cos(this.heading) * speed * dt;
+        this.y += Math.sin(this.heading) * speed * dt;
+    }
     moveBackward() {
         this.vr = -this.minspeed;
         this.vl = -this.minspeed / 2;
