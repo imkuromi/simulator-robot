@@ -26,7 +26,7 @@ window.addEventListener("DOMContentLoaded", () => {
     // occupancyCanvas.height = MAP_DIMENSIONS[1] / 2;
     // ถ้าปรับสเกล ต้องปรับการวาดใน OccupancyGridMap หรือสเกล context ตอนวาด
     let currentTarget: [number, number] | null = null;
-    const CELL_SIZE = 3;
+    const CELL_SIZE = 10;
     // OccupancyGridMap ยังคงใช้ 'canvas' (simulator canvas) สำหรับการ ray casting อ่าน map.png
     const occupancyMap = new OccupancyGridMap(MAP_DIMENSIONS[0], MAP_DIMENSIONS[1], CELL_SIZE, canvas);
 
@@ -41,7 +41,7 @@ window.addEventListener("DOMContentLoaded", () => {
     const ultrasonic = new Ultrasonic(sensorRange, canvas);
 
     // ใช้ sensorRange[0] (ค่าระยะของ Ultrasonic) เป็น range ของ Lidar และใช้มุมเดียวกับ ultrasonic
-    const lidar = new Lidar(sensorRange[0], 1, 40, canvas);
+    const lidar = new Lidar(sensorRange[0], 1, 360, canvas);
 
     let lastTime = performance.now();
 

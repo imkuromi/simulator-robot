@@ -8,53 +8,38 @@ export class Lidar { // ประกาศคลาส Lidar สำหรับ�
     mapHeight: number; // ความสูงของ canvas (แผนที่)
 
     // Constructor: ฟังก์ชันที่ถูกเรียกเมื่อสร้าง object Lidar ใหม่
-    constructor(range: number, angleStep: number,lidarAngle:number,  canvas: HTMLCanvasElement) {
+    constructor(range: number, angleStep: number, lidarAngle: number, canvas: HTMLCanvasElement,) {
         this.range = range; // กำหนดระยะตรวจจับสูงสุดจาก argument ที่รับมา
         this.angleStep = angleStep * (Math.PI / 180); // แปลง angleStep จากองศาเป็นเรเดียน
-        this.lidarAngle = lidarAngle * (Math.PI / 180);
         this.canvas = canvas; // เก็บ reference ของ canvas
         this.ctx = canvas.getContext("2d")!; // ดึง 2D context จาก canvas
         this.mapWidth = canvas.width; // เก็บความกว้างของ canvas
         this.mapHeight = canvas.height; // เก็บความสูงของ canvas
+        this.lidarAngle = lidarAngle * (Math.PI / 180);
     }
 
     // ฟังก์ชัน scan: ทำการสแกนหาสิ่งกีดขวางรอบตัวหุ่นยนต์
     scan(x: number, y: number, heading: number): [number, number][] {
         const points: [number, number][] = []; // Array สำหรับเก็บตำแหน่ง [x, y] ของสิ่งกีดขวางที่พบ
 
-        // วน loop สแกนรอบตัวหุ่นยนต์ โดยเริ่มจาก heading-lidarAngle ถึง heading+lidarAngle เหมือนกับ ultrasonic
-        const start_angle = heading - this.lidarAngle;
-        const finish_angle = heading + this.lidarAngle;
+        // วน loop สแกนรอบ 360 องศา (0 ถึง 2 * PI เรเดียน) โดยเพิ่มทีละ angleStep
+        for (let angle = 0; angle < 2 * Math.PI; angle += this.angleStep) {
+            const theta = heading + angle; // คำนวณมุมสัมบูรณ์ของการสแกน (เทียบกับแกน x) โดยรวม heading ของหุ่นยนต์
 
-        for (let angle = start_angle; angle < finish_angle; angle += this.angleStep) {
-            const theta = angle; // ใช้มุมโดยตรงเพราะได้รวม heading แล้ว
+            // วน loop ตรวจสอบระยะทางจากหุ่นยนต์ (r) ไปจนถึงระยะ range สูงสุด โดยเพิ่มทีละ 2 พิกเซล (เพื่อความเร็ว)
+            for (let r = 0; r < this.range; r += 2) {
+                // คำนวณพิกัด (scanX, scanY) ที่จะตรวจสอบ ณ มุม theta และระยะ r
+                const scanX = Math.floor(x + r * Math.cos(theta)); // ปัดเศษลงเพื่อให้ได้ index พิกเซล
+                const scanY = Math.floor(y - r * Math.sin(theta)); // แกน y กลับด้านใน canvas จึงใช้เครื่องหมายลบ
 
-            // คำนวณจุดปลายของเส้นเลเซอร์ (เหมือนกับ ultrasonic)
-            const endX = x + this.range * Math.cos(theta);
-            const endY = y - this.range * Math.sin(theta);
-
-            // ใช้การประมาณค่าระหว่างจุดเริ่มต้นและจุดสิ้นสุด (เหมือนกับ ultrasonic)
-            let obstacleFound = false;
-
-            // วนลูปตามความยาวของเส้น (เหมือนกับ ultrasonic)
-            for (let j = 0; j < 100; j++) {
-                let u = j / 100; // ค่าสัดส่วนระหว่าง 0-1
-                let scanX = Math.floor(endX * u + x * (1 - u)); // ประมาณค่า x
-                let scanY = Math.floor(endY * u + y * (1 - u)); // ประมาณค่า y
-
-                // ตรวจสอบว่าพิกัดอยู่ใน canvas หรือไม่
+                // ตรวจสอบว่าพิกัดที่คำนวณได้ยังอยู่ในขอบเขตของ canvas หรือไม่
                 if (scanX >= 0 && scanY >= 0 && scanX < this.mapWidth && scanY < this.mapHeight) {
                     // อ่านค่าสีของพิกเซล ณ ตำแหน่ง (scanX, scanY)
                     const pixel = this.ctx.getImageData(scanX, scanY, 1, 1).data;
 
-                    // วาดเส้นเลเซอร์ (เหมือนกับ ultrasonic)
-                    this.ctx.fillStyle = "rgba(0, 255, 0, 0.5)"; // สีเขียวโปร่งใสเข้มขึ้น
-                    this.ctx.fillRect(scanX, scanY, 2, 1); // วาดเส้นเล็กๆ ตามเส้นทางของเลเซอร์ เหมือนกับ ultrasonic
-
-                    // ตรวจสอบว่าพิกเซลเป็นสีดำหรือใกล้เคียงหรือไม่ (R<20, G<20, B<20), เหมือนกับ ultrasonic
-                    if (pixel[0] < 20 && pixel[1] < 20 && pixel[2] < 20) {
+                    // ตรวจสอบว่าพิกเซลเป็นสีดำหรือไม่ (R=0, G=0, B=0), ซึ่งหมายถึงสิ่งกีดขวาง
+                    if (pixel[0] === 0 && pixel[1] === 0 && pixel[2] === 0) {
                         points.push([scanX, scanY]); // เพิ่มตำแหน่งที่พบสิ่งกีดขวางลงใน array
-                        obstacleFound = true;
                         break; // หยุดการสแกนในทิศทาง (angle) นี้ เพราะเจอสิ่งกีดขวางแล้ว
                     }
                 } else {
@@ -69,13 +54,10 @@ export class Lidar { // ประกาศคลาส Lidar สำหรับ�
 
     // ฟังก์ชัน drawScan: วาดจุดแสดงตำแหน่งที่ Lidar ตรวจพบสิ่งกีดขวาง
     drawScan(points: [number, number][]) {
-        this.ctx.fillStyle = '#00FF00'; // สีเขียวสด (bright green)
+        this.ctx.fillStyle = 'lime'; // กำหนดสีเติมเป็นสีเขียวมะนาว (lime)
         // วน loop ไปยังทุกจุดที่พบสิ่งกีดขวาง
         for (const [x, y] of points) {
-            // วาดวงกลมสีเขียวที่ตำแหน่งที่พบสิ่งกีดขวาง
-            this.ctx.beginPath();
-            this.ctx.arc(x, y, 4, 0, Math.PI * 2); // วาดวงกลมขนาดรัศมี 4 พิกเซล
-            this.ctx.fill();
+            this.ctx.fillRect(x, y, 2, 2); // วาดสี่เหลี่ยมขนาด 2x2 พิกเซล ณ ตำแหน่ง (x, y)
         }
     }
 }
