@@ -4,6 +4,7 @@ export const CELL_STATE = {
     OCCUPIED: 2,
 };
 export class OccupancyGridMap {
+    // isDoneExplore: boolean = false;
     constructor(mapWidthPx, mapHeightPx, cellSize, canvasForRayCasting) {
         this.cellSize = cellSize;
         this.gridWidth = Math.ceil(mapWidthPx / cellSize);
@@ -83,21 +84,55 @@ export class OccupancyGridMap {
         }
     }
     // วาด Occupancy Grid Map ลงบน canvas
-    draw(ctx) {
+    draw(ctx, currentTarget) {
+        // วาด grid ปกติ
         for (let i = 0; i < this.gridWidth; i++) {
             for (let j = 0; j < this.gridHeight; j++) {
                 const worldX = this.mapOriginX + i * this.cellSize;
                 const worldY = this.mapOriginY + j * this.cellSize;
-                let color = "rgba(200, 200, 200, 0.2)"; // UNKNOWN (เทาอ่อน, โปร่งแสง)
+                let color = "rgba(200, 200, 200, 0.2)"; // UNKNOWN
                 if (this.grid[i][j] === CELL_STATE.FREE) {
-                    color = "rgba(255, 255, 255, 0.3)"; // FREE (ขาว, โปร่งแสง)
+                    color = "rgba(255, 255, 255, 0.3)"; // FREE
                 }
                 else if (this.grid[i][j] === CELL_STATE.OCCUPIED) {
-                    color = "rgba(50, 50, 50, 0.6)"; // OCCUPIED (เทาเข้ม, โปร่งแสง)
+                    color = "rgba(50, 50, 50, 0.6)"; // OCCUPIED
                 }
                 ctx.fillStyle = color;
                 ctx.fillRect(worldX, worldY, this.cellSize, this.cellSize);
             }
         }
+        // วาด current target ถ้ามี
+        if (currentTarget) {
+            ctx.beginPath();
+            ctx.arc(currentTarget[0], currentTarget[1], 8, 0, Math.PI * 2);
+            ctx.fillStyle = "rgba(255, 0, 0, 1)"; // สีแดง
+            ctx.fill();
+        }
+    }
+    detectFrontiers() {
+        const frontiers = [];
+        const grid = this.grid;
+        const CELL_SIZE = this.cellSize;
+        // console.log(`grid[0] ${grid[0]}`)
+        // console.log(`grid length ${grid.length}`)
+        // Iterate over the entire grid to find `UNKNOWN` cells next to `FREE` cells
+        for (let x = 1; x < grid.length - 1; x++) {
+            for (let y = 1; y < grid[0].length - 1; y++) {
+                if (grid[x][y] === CELL_STATE.FREE) { // Unexplored cell
+                    const neighbors = [
+                        // grid[x + 1][y], grid[x - 1][y],  // Right/Left
+                        // grid[x][y + 1], grid[x][y - 1],  // Up/Down
+                        grid[x + 1][y], grid[x - 1][y],
+                        grid[x][y + 1], grid[x][y - 1],
+                        grid[x + 1][y + 1], grid[x - 1][y - 1],
+                        grid[x + 1][y - 1], grid[x - 1][y + 1],
+                    ];
+                    if (neighbors.includes(CELL_STATE.UNKNOWN)) { // Check if adjacent to free space
+                        frontiers.push([x * CELL_SIZE, y * CELL_SIZE]);
+                    }
+                }
+            }
+        }
+        return frontiers;
     }
 }

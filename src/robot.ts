@@ -14,8 +14,14 @@ export class Robot {
     vr: number;
     maxspeed: number;
     minspeed: number;
-    min_obs_dist = 100;
-    count_down = 5;
+    min_obs_dist: number = 100;
+    // count_down: number = 5;
+    private isAvoiding: boolean = false;
+    private avoidanceAngle: number = 0;
+    private readonly TURN_SPEED: number = 45 * (Math.PI / 180); // 1 rotation per second
+    private readonly DISTANCE_THRESHOLD: number = 70; // pixels
+
+    // private readonly TURN_SPEED: number = Math.PI; // 1 rotation per second
 
     constructor(startpos: [number, number], width: number) {
         this.w = width;
@@ -28,97 +34,74 @@ export class Robot {
     }
 
     avoidObstacles(pointCloud: [number, number][], dt: number, target?: [number, number]) {
-        // let closestObs: [number, number] | null = null;
-        let dist = Infinity;
+        let minDist = Infinity;
+        for (const [px, py] of pointCloud) {
+            const dist = distance([this.x, this.y], [px, py]);
+            minDist = Math.min(minDist, dist);
+        }
 
-        for (let point of pointCloud) {
-            const d = distance([this.x, this.y], point);
-            if (d < dist) {
-                dist = d;
-                // closestObs = point;
+        if (minDist < this.min_obs_dist) {
+            if (!this.isAvoiding) {
+                this.isAvoiding = true;
+                this.avoidanceAngle = Math.random() > 0.5 ? Math.PI / 2 : -Math.PI / 2;
+                this.stopRobot();
             }
+            // Apply avoidance behavior
+            this.heading += this.avoidanceAngle * this.TURN_SPEED * dt;
+            return; // Exit early when avoiding
         }
 
-        if (dist < this.min_obs_dist) {
-            // console.log("Too close to obstacle, moving backward.");
-            this.count_down -= dt;
-            this.moveBackward();
-        } else if (target) {
-            // console.log(`Avoiding obstacles while steering toward [${target[0]}, ${target[1]}]`);
+        // Only reset isAvoiding when we're actually clear of obstacles
+        this.isAvoiding = false;
+
+        if (target) {
             this.moveToward(target[0], target[1], dt);
-            this.count_down = 5;
+        } else {
+            this.moveForward();
         }
-        // } else {
-        //     console.log("No target — moving forward safely.");
-        //     this.count_down = 5;
-        //
-        // }
+    }
 
+    private normalizeAngle(angle: number): number {
+        while (angle > Math.PI) angle -= 2 * Math.PI;
+        while (angle < -Math.PI) angle += 2 * Math.PI;
+        return angle;
     }
 
     distanceTo(target: [number, number]): number {
         return distance([this.x, this.y], target);
     }
 
-    moveToward(tx: number, ty: number, dt: number) {
-        // Mathematical formula: 
-        // θ_target = atan2(ty - y, tx - x)
-        // θ_new = θ_current + clamp(θ_target - θ_current, -2dt, 2dt)
-        // x_new = x + cos(θ_new) * speed * dt
-        // y_new = y - sin(θ_new) * speed * dt
-        //
-        // About "clamp" function:
-        // Clamping restricts a value to stay within a specified range.
-        // In this code, clamp(value, min, max) is implemented as: Math.max(min, Math.min(max, value))
-        // It ensures the robot doesn't turn too sharply by limiting the angle change to [-maxTurn, maxTurn].
-        // This creates smoother, more realistic movement as the robot gradually turns toward its target.
-        //
-        // About "dt" (delta time):
-        // dt represents the time elapsed since the last frame in seconds.
-        // It's crucial for frame-rate independent movement - the robot moves at the same speed
-        // regardless of how fast or slow the simulation is running.
-        // In this method, dt affects:
-        //   1. The maximum turning rate (maxTurn = 0.1 * dt)
-        //   2. The distance traveled each frame (speed * dt)
-        //
-        // About "maxTurn":
-        // maxTurn is the maximum angle (in radians) that the robot can rotate in a single time step.
-        // It's calculated as 0.1 * dt, where dt is the delta time (time elapsed since last frame).
-        // This creates a rate-limited turning behavior - the robot can turn at most 0.1 radians
-        // (about 5.7 degrees) per second, scaled by the time elapsed.
-        // Without this limitation, the robot would instantly snap to face the target direction,
-        // which would look unrealistic. Instead, maxTurn creates a smooth, gradual turning motion
-        // that simulates the physical limitations of a real robot.
-        //
-        // Precision and maxTurn:
-        // A smaller maxTurn value results in more precise turning movements. When maxTurn is small,
-        // the robot makes smaller angular adjustments in each step, allowing it to follow a more
-        // precise path toward the target. This is especially important for fine-grained navigation
-        // around obstacles or when approaching a target that requires precise positioning.
-        // However, a smaller maxTurn also means the robot takes more time steps to complete a turn,
-        // resulting in slower overall turning speed but higher precision in movement.
-        //
-        // Example with numbers:
-        // Given: robot at (100, 150), target at (200, 100), dt = 0.1, heading = 0, speed = 10
-        // 1. θ_target = atan2(100 - 150, 200 - 100) = atan2(-50, 100) ≈ -0.464 radians
-        // 2. angleDiff = -0.464 - 0 = -0.464
-        // 3. maxTurn = 0.1 * 0.1 = 0.01
-        // 4. new heading = 0 + clamp(-0.464, -0.01, 0.01) = 0 - 0.01 = -0.01 radians
-        // 5. x_new = 100 + cos(-0.01) * 10 * 0.1 = 100 + 0.999 = 100.999
-        // 6. y_new = 150 - sin(-0.01) * 10 * 0.1 = 150 - (-0.01) = 150.01
-        const angleToTarget = Math.atan2(ty - this.y, tx - this.x);
-        const angleDiff = angleToTarget - this.heading;
-        const maxTurn = 0.01 * dt;
-        this.heading += Math.max(-maxTurn, Math.min(maxTurn, angleDiff));
-        const speed = this.minspeed;
-        this.x += Math.cos(this.heading) * speed * dt;
-        this.y -= Math.sin(this.heading) * speed * dt;
+    moveToward(targetX: number, targetY: number, dt: number) {
+        const targetAngle = Math.atan2(-(targetY - this.y), targetX - this.x);
+        const angleDiff = this.normalizeAngle(targetAngle - this.heading);
+
+        // Adjust heading more aggressively when close to the target
+        const dist = Math.sqrt((targetX - this.x) ** 2 + (targetY - this.y) ** 2);
+        const turnSpeed = dist < 50 ? this.TURN_SPEED * 2 : this.TURN_SPEED;
+
+        this.heading = this.normalizeAngle(
+            this.heading + Math.sign(angleDiff) * turnSpeed * dt
+        );
+
+        // Move forward if roughly pointing at the target (an increased angle threshold)
+        if (Math.abs(angleDiff) < Math.PI / 3) { // Changed from PI/4 to PI/3
+            this.moveForward();
+        } else {
+            // Stop moving when turning significantly
+            this.stopRobot();
+        }
     }
 
-    moveBackward() {
-        this.vr = -this.minspeed;
-        this.vl = -this.minspeed / 2;
-        // this.vl = this.minspeed;
+
+    // moveBackward() {
+    //     this.vr = -this.minspeed;
+    //     this.vl = -this.minspeed / 2;
+    //     // console.log(`move_backward: vl = ${this.vl}, vr = ${this.vr}`);
+    // }
+
+    stopRobot() {
+        this.vr = 0;
+        this.vl = 0;
         // console.log(`move_backward: vl = ${this.vl}, vr = ${this.vr}`);
     }
 
@@ -139,9 +122,12 @@ export class Robot {
         }
         this.vr = Math.max(Math.min(this.maxspeed, this.vr), this.minspeed);
         this.vl = Math.max(Math.min(this.maxspeed, this.vl), this.minspeed);
-        // console.log(`After kinematics: x: ${this.x}, y: ${this.y}, heading: ${this.heading}`);
+        // console.log(`After kinematics: x: ${this.x}, y: ${this.heading}`);
     }
 
+    hasReachedTarget(currentTarget: [number, number]): boolean {
+        return this.distanceTo(currentTarget) < this.DISTANCE_THRESHOLD;
+    }
 }
 
 export class Ultrasonic {

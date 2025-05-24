@@ -15,6 +15,7 @@ export class OccupancyGridMap {
     mapOriginX: number; // พิกัด X ของโลกจริงที่มุมบนซ้ายของช่อง (0,0) ใน grid
     mapOriginY: number; // พิกัด Y ของโลกจริงที่มุมบนซ้ายของช่อง (0,0) ใน grid
     ctxForRayCasting: CanvasRenderingContext2D; // Context สำหรับอ่านค่า pixel โดยตรง (เหมือน Lidar)
+    // isDoneExplore: boolean = false;
 
     constructor(mapWidthPx: number, mapHeightPx: number, cellSize: number, canvasForRayCasting: HTMLCanvasElement) {
         this.cellSize = cellSize;
@@ -22,7 +23,7 @@ export class OccupancyGridMap {
         this.gridHeight = Math.ceil(mapHeightPx / cellSize);
         this.mapOriginX = 0; // สมมติว่าแผนที่ในโลกเริ่มที่ (0,0)
         this.mapOriginY = 0;
-        this.ctxForRayCasting = canvasForRayCasting.getContext("2d", { willReadFrequently: true })!;
+        this.ctxForRayCasting = canvasForRayCasting.getContext("2d", {willReadFrequently: true})!;
 
 
         this.grid = [];
@@ -105,21 +106,57 @@ export class OccupancyGridMap {
     }
 
     // วาด Occupancy Grid Map ลงบน canvas
-    draw(ctx: CanvasRenderingContext2D) {
+    draw(ctx: CanvasRenderingContext2D, currentTarget?: [number, number]) {
+        // วาด grid ปกติ
         for (let i = 0; i < this.gridWidth; i++) {
             for (let j = 0; j < this.gridHeight; j++) {
                 const worldX = this.mapOriginX + i * this.cellSize;
                 const worldY = this.mapOriginY + j * this.cellSize;
-                let color = "rgba(200, 200, 200, 0.2)"; // UNKNOWN (เทาอ่อน, โปร่งแสง)
+                let color = "rgba(200, 200, 200, 0.2)"; // UNKNOWN
 
                 if (this.grid[i][j] === CELL_STATE.FREE) {
-                    color = "rgba(255, 255, 255, 0.3)"; // FREE (ขาว, โปร่งแสง)
+                    color = "rgba(255, 255, 255, 0.3)"; // FREE
                 } else if (this.grid[i][j] === CELL_STATE.OCCUPIED) {
-                    color = "rgba(50, 50, 50, 0.6)"; // OCCUPIED (เทาเข้ม, โปร่งแสง)
+                    color = "rgba(50, 50, 50, 0.6)"; // OCCUPIED
                 }
                 ctx.fillStyle = color;
                 ctx.fillRect(worldX, worldY, this.cellSize, this.cellSize);
             }
         }
+
+        // วาด current target ถ้ามี
+        if (currentTarget) {
+            ctx.beginPath();
+            ctx.arc(currentTarget[0], currentTarget[1], 8, 0, Math.PI * 2);
+            ctx.fillStyle = "rgba(255, 0, 0, 1)"; // สีแดง
+            ctx.fill();
+        }
+    }
+
+    detectFrontiers(): [number, number][] {
+        const frontiers: [number, number][] = [];
+        const grid = this.grid;
+        const CELL_SIZE = this.cellSize;
+        // console.log(`grid[0] ${grid[0]}`)
+        // console.log(`grid length ${grid.length}`)
+        // Iterate over the entire grid to find `UNKNOWN` cells next to `FREE` cells
+        for (let x = 1; x < grid.length - 1; x++) {
+            for (let y = 1; y < grid[0].length - 1; y++) {
+                if (grid[x][y] === CELL_STATE.FREE) { // Unexplored cell
+                    const neighbors = [
+                        // grid[x + 1][y], grid[x - 1][y],  // Right/Left
+                        // grid[x][y + 1], grid[x][y - 1],  // Up/Down
+                        grid[x + 1][y], grid[x - 1][y],
+                        grid[x][y + 1], grid[x][y - 1],
+                        grid[x + 1][y + 1], grid[x - 1][y - 1],
+                        grid[x + 1][y - 1], grid[x - 1][y + 1],
+                    ];
+                    if (neighbors.includes(CELL_STATE.UNKNOWN)) { // Check if adjacent to free space
+                        frontiers.push([x * CELL_SIZE, y * CELL_SIZE]);
+                    }
+                }
+            }
+        }
+        return frontiers;
     }
 }

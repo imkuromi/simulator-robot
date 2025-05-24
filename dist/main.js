@@ -1,6 +1,6 @@
 import { Robot, Ultrasonic } from "./robot.js";
 import { Lidar } from "./lidar.js";
-import { OccupancyGridMap, CELL_STATE } from "./occupancyGridMap.js";
+import { OccupancyGridMap } from "./occupancyGridMap.js";
 window.addEventListener("DOMContentLoaded", () => {
     const canvas = document.getElementById("simulator");
     const ctx = canvas.getContext("2d", { willReadFrequently: true });
@@ -8,7 +8,8 @@ window.addEventListener("DOMContentLoaded", () => {
     const occupancyCanvas = document.getElementById("occupancyMapCanvas");
     const occupancyCtx = occupancyCanvas.getContext("2d");
     const mapImage = new Image();
-    mapImage.src = "images/map.png";
+    // mapImage.src = "images/map_5.png";
+    mapImage.src = "images/map_7.png";
     const robotImage = new Image();
     robotImage.src = "images/robot.png";
     // const MAP_DIMENSIONS: [number, number] = [1200, 600];
@@ -28,7 +29,7 @@ window.addEventListener("DOMContentLoaded", () => {
     const occupancyMap = new OccupancyGridMap(MAP_DIMENSIONS[0], MAP_DIMENSIONS[1], CELL_SIZE, canvas);
     const start = [80, 80];
     const robot = new Robot(start, 0.01 * 3779.52);
-    const sensorRange = [200, (40 * Math.PI) / 180];
+    const sensorRange = [150, (40 * Math.PI) / 180];
     //ตรวจจับได้ไกล 250px และมุมตรวจจับ 40 องศา (แปลงเป็นเรเดียน)
     //(40 * Math.PI) / 180 เป็นสูตรที่ใช้ แปลงองศา (degrees) เป็นเรเดียน (radians)
     //เพราะใน JavaScript (และคณิตศาสตร์ทั่วไป) มุมในฟังก์ชันตรีโกณมิติเช่น Math.sin(), Math.cos() ฯลฯ ต้องอยู่ใน
@@ -55,66 +56,50 @@ window.addEventListener("DOMContentLoaded", () => {
             ctx.fill();
         }
     }
-    function detectFrontiers(map) {
-        const frontiers = [];
-        const grid = map.grid;
-        const CELL_SIZE = map.cellSize;
-        // console.log(`grid[0] ${grid[0]}`)
-        // console.log(`grid length ${grid.length}`)
-        // Iterate over the entire grid to find `UNKNOWN` cells next to `FREE` cells
-        for (let x = 1; x < grid.length - 1; x++) {
-            for (let y = 1; y < grid[0].length - 1; y++) {
-                if (grid[x][y] === CELL_STATE.FREE) { // Unexplored cell
-                    const neighbors = [
-                        // grid[x + 1][y], grid[x - 1][y],  // Right/Left
-                        // grid[x][y + 1], grid[x][y - 1],  // Up/Down
-                        grid[x + 1][y], grid[x - 1][y],
-                        grid[x][y + 1], grid[x][y - 1],
-                        grid[x + 1][y + 1], grid[x - 1][y - 1],
-                        grid[x + 1][y - 1], grid[x - 1][y + 1],
-                    ];
-                    if (neighbors.includes(CELL_STATE.UNKNOWN)) { // Check if adjacent to free space
-                        frontiers.push([x * CELL_SIZE, y * CELL_SIZE]);
-                    }
-                }
-            }
-        }
-        return frontiers;
-    }
     function loop(timestamp) {
         const dt = (timestamp - lastTime) / 1000;
         lastTime = timestamp;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(mapImage, 0, 0);
-        const pointCloud = ultrasonic.senseObstacles(robot.x, robot.y, robot.heading, 20);
+        const pointCloud = ultrasonic.senseObstacles(robot.x, robot.y, robot.heading, 10);
         const lidarPoints = lidar.scan(robot.x, robot.y, robot.heading);
         occupancyMap.updateWithLidarData(robot.x, robot.y, robot.heading, lidar);
-        const frontiers = detectFrontiers(occupancyMap);
-        if (frontiers.length > 0) {
-            frontiers.sort((a, b) => robot.distanceTo(a) - robot.distanceTo(b));
-            currentTarget = frontiers[0];
-            // console.log(frontiers)
+        console.log(`current target: ${currentTarget ? `[${currentTarget}]` : "null"}`);
+        // Handle target sequence
+        if (currentTarget) {
+            const dist = robot.distanceTo(currentTarget);
+            console.log(`Current position: (${robot.x.toFixed(2)}, ${robot.y.toFixed(2)})`);
+            console.log(`Target position: (${currentTarget[0]}, ${currentTarget[1]})`);
+            console.log(`Distance to target: ${dist.toFixed(2)}`);
+            if (robot.hasReachedTarget(currentTarget)) {
+                console.log("Target reached!");
+                currentTarget = null;
+            }
+            else {
+                robot.avoidObstacles(pointCloud, dt, currentTarget);
+            }
         }
-        else {
-            console.log("No frontiers found.");
-            currentTarget = null;
+        // Find new target if we don't have one
+        if (!currentTarget) {
+            const frontiers = occupancyMap.detectFrontiers();
+            if (frontiers.length > 0) {
+                frontiers.sort((a, b) => robot.distanceTo(a) - robot.distanceTo(b));
+                // console.log(frontiers)
+                currentTarget = frontiers[0];
+                console.log(`New target acquired: [${currentTarget[0]}, ${currentTarget[1]}]`);
+            }
+            else {
+                robot.vl = 0;
+                robot.vr = 0;
+            }
         }
-        console.log(`currentTarget ${currentTarget}`);
         robot.kinematics(dt);
-        // if (!currentTarget) {
-        //     robot.avoidObstacles(pointCloud, dt); // fallback if no target
-        // } else {
-        //     console.log(`Moving toward target: [${currentTarget[0]}, ${currentTarget[1]}]`);
-        //     robot.moveToward(currentTarget[0], currentTarget[1], dt);
-        // }
-        // Always use avoidObstacles, give it the target so it can steer intelligently
-        robot.avoidObstacles(pointCloud, dt, currentTarget);
-        // Now apply kinematics after movement decision
+        // Draw updates
         drawRobot(robot.x, robot.y, robot.heading);
         drawSensorData(pointCloud);
         lidar.drawScan(lidarPoints);
         occupancyCtx.clearRect(0, 0, occupancyCanvas.width, occupancyCanvas.height);
-        occupancyMap.draw(occupancyCtx);
+        occupancyMap.draw(occupancyCtx, currentTarget);
         requestAnimationFrame(loop);
     }
     // เริ่ม simulation เมื่อโหลดภาพเสร็จ
