@@ -109,26 +109,58 @@ export class OccupancyGridMap {
             ctx.fill();
         }
     }
+    // detectFrontiers(): [number, number][] {
+    //     const frontiers: [number, number][] = [];
+    //     const grid = this.grid;
+    //     const CELL_SIZE = this.cellSize;
+    //     // console.log(`grid[0] ${grid[0]}`)
+    //     // console.log(`grid length ${grid.length}`)
+    //     // Iterate over the entire grid to find `UNKNOWN` cells next to `FREE` cells
+    //     for (let x = 1; x < grid.length - 1; x++) {
+    //         for (let y = 1; y < grid[0].length - 1; y++) {
+    //             if (grid[x][y] === CELL_STATE.FREE) { // Unexplored cell
+    //                 const neighbors = [
+    //                     // grid[x + 1][y], grid[x - 1][y],  // Right/Left
+    //                     // grid[x][y + 1], grid[x][y - 1],  // Up/Down
+    //                     grid[x + 1][y], grid[x - 1][y],
+    //                     grid[x][y + 1], grid[x][y - 1],
+    //                     grid[x + 1][y + 1], grid[x - 1][y - 1],
+    //                     grid[x + 1][y - 1], grid[x - 1][y + 1],
+    //                 ];
+    //                 if (neighbors.includes(CELL_STATE.UNKNOWN)) { // Check if adjacent to free space
+    //                     frontiers.push([x * CELL_SIZE, y * CELL_SIZE]);
+    //                 }
+    //             }
+    //         }
+    //     }
+    //     return frontiers;
+    // }
     detectFrontiers() {
         const frontiers = [];
         const grid = this.grid;
         const CELL_SIZE = this.cellSize;
-        // console.log(`grid[0] ${grid[0]}`)
-        // console.log(`grid length ${grid.length}`)
-        // Iterate over the entire grid to find `UNKNOWN` cells next to `FREE` cells
+        // Iterate over the entire grid to find frontier cells
         for (let x = 1; x < grid.length - 1; x++) {
             for (let y = 1; y < grid[0].length - 1; y++) {
-                if (grid[x][y] === CELL_STATE.FREE) { // Unexplored cell
+                // FIXED: Check if current cell is UNKNOWN (potential frontier)
+                if (grid[x][y] === CELL_STATE.UNKNOWN && grid[x][y + 1] !== CELL_STATE.OCCUPIED) {
+                    // Check 8-connected neighbors for FREE cells
                     const neighbors = [
-                        // grid[x + 1][y], grid[x - 1][y],  // Right/Left
-                        // grid[x][y + 1], grid[x][y - 1],  // Up/Down
-                        grid[x + 1][y], grid[x - 1][y],
-                        grid[x][y + 1], grid[x][y - 1],
-                        grid[x + 1][y + 1], grid[x - 1][y - 1],
-                        grid[x + 1][y - 1], grid[x - 1][y + 1],
+                        grid[x + 1][y], // Right
+                        grid[x - 1][y], // Left
+                        grid[x][y + 1], // Down
+                        grid[x][y - 1], // Up
+                        grid[x + 1][y + 1], // Bottom-right
+                        grid[x - 1][y - 1], // Top-left
+                        grid[x + 1][y - 1], // Top-right
+                        grid[x - 1][y + 1], // Bottom-left
                     ];
-                    if (neighbors.includes(CELL_STATE.UNKNOWN)) { // Check if adjacent to free space
-                        frontiers.push([x * CELL_SIZE, y * CELL_SIZE]);
+                    // FIXED: If any neighbor is FREE, this UNKNOWN cell is a frontier
+                    if (neighbors.includes(CELL_STATE.FREE)) {
+                        // Convert grid coordinates to world coordinates
+                        const worldX = this.mapOriginX + x * CELL_SIZE + CELL_SIZE / 2; // Center of cell
+                        const worldY = this.mapOriginY + y * CELL_SIZE + CELL_SIZE / 2; // Center of cell
+                        frontiers.push([worldX, worldY]);
                     }
                 }
             }

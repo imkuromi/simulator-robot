@@ -4,16 +4,27 @@ let distance = (p1, p2) => {
     return Math.sqrt(dx * dx + dy * dy);
 };
 export class Robot {
-    // private readonly TURN_SPEED: number = Math.PI; // 1 rotation per second
     constructor(startpos, width) {
+        // Add these properties to your Robot class if they don't exist
+        this.isAvoiding = false;
+        this.min_obs_dist = 100;
+        this.TURN_SPEED = Math.PI / 4; // 45 degrees per second
         this.m2p = 3779.52;
         this.heading = 0;
-        this.min_obs_dist = 100;
-        // count_down: number = 5;
-        this.isAvoiding = false;
         this.avoidanceAngle = 0;
-        this.TURN_SPEED = 45 * (Math.PI / 180); // 1 rotation per second
         this.DISTANCE_THRESHOLD = 70; // pixels
+        this.delay = 5;
+        // Add these new properties for managing 360-degree turn
+        this.is360Turning = false;
+        this.FULL_ROTATION = 2 * Math.PI;
+        this.turnProgress = 0;
+        // private readonly TURN_SPEED: number = Math.PI; // 1 rotation per second
+        // Add new properties for sensor sections
+        this.sensorSections = {
+            0: [], // Left section
+            1: [], // Center section
+            2: [], // Right section
+        };
         this.w = width;
         this.x = startpos[0];
         this.y = startpos[1];
@@ -22,30 +33,94 @@ export class Robot {
         this.maxspeed = 0.02 * this.m2p;
         this.minspeed = 0.01 * this.m2p;
     }
+    // Add new property for spin speed
     avoidObstacles(pointCloud, dt, target) {
-        let minDist = Infinity;
-        for (const [px, py] of pointCloud) {
-            const dist = distance([this.x, this.y], [px, py]);
-            minDist = Math.min(minDist, dist);
+        const leftPoints = pointCloud.slice(0, 5);
+        const centerPoints = pointCloud.slice(5, 10);
+        const rightPoints = pointCloud.slice(10, 15);
+        const minDistances = {
+            left: this.getMinDistance(leftPoints),
+            center: this.getMinDistance(centerPoints),
+            right: this.getMinDistance(rightPoints)
+        };
+        // First, check if center is clear
+        if (minDistances.center > this.min_obs_dist) {
+            // Center is clear, we can move forward
+            this.isAvoiding = false;
+            this.is360Turning = false;
+            if (target) {
+                this.moveToward(target[0], target[1], dt);
+            }
+            else {
+                this.moveForward();
+            }
+            return;
         }
-        if (minDist < this.min_obs_dist) {
-            if (!this.isAvoiding) {
-                this.isAvoiding = true;
-                this.avoidanceAngle = Math.random() > 0.5 ? Math.PI / 2 : -Math.PI / 2;
+        // If center is blocked, check if all sections are blocked
+        const allBlocked = Object.values(minDistances).every(dist => dist < this.min_obs_dist);
+        console.log(allBlocked);
+        if (allBlocked) {
+            // Start spinning in place
+            if (!this.is360Turning) {
+                this.is360Turning = true;
+                this.turnProgress = 0;
+                this.stopRobot();
+                this.spinInPlace();
+            }
+            // Continue turning until we complete 360 degrees
+            if (this.turnProgress < this.FULL_ROTATION) {
+                this.turnProgress += Math.abs(this.vr - this.vl) / this.w * dt;
+                return;
+            }
+            else {
+                // Reset turning state after completing 360 degrees
+                this.is360Turning = false;
+                this.turnProgress = 0;
                 this.stopRobot();
             }
-            // Apply avoidance behavior
-            this.heading += this.avoidanceAngle * this.TURN_SPEED * dt;
-            return; // Exit early when avoiding
         }
-        // Only reset isAvoiding when we're actually clear of obstacles
+        else if (minDistances.center < this.min_obs_dist) {
+            // Center is blocked but sides aren't all blocked
+            if (!this.isAvoiding) {
+                this.isAvoiding = true;
+                this.stopRobot();
+                // Choose the direction with more space
+                this.avoidanceAngle = minDistances.left > minDistances.right
+                    ? -Math.PI / 4 // Turn left
+                    : Math.PI / 4; // Turn right
+            }
+            this.heading += this.avoidanceAngle * this.TURN_SPEED * dt;
+            return;
+        }
+        // No obstacles in center
         this.isAvoiding = false;
+        this.is360Turning = false;
         if (target) {
             this.moveToward(target[0], target[1], dt);
         }
         else {
             this.moveForward();
         }
+    }
+    // Add new method for spinning in place
+    spinInPlace() {
+        this.vr = this.minspeed; // Right wheel forward
+        this.vl = -this.minspeed; // Left wheel backward
+    }
+    getMinDistance(points) {
+        if (points.length === 0)
+            return Infinity;
+        return Math.min(...points.map(point => Math.sqrt(Math.pow(point[0] - this.x, 2) +
+            Math.pow(point[1] - this.y, 2))));
+    }
+    // Make sure you have these methods in your Robot class
+    stopRobot() {
+        this.vl = 0;
+        this.vr = 0;
+    }
+    moveForward() {
+        this.vl = this.minspeed;
+        this.vr = this.minspeed;
     }
     normalizeAngle(angle) {
         while (angle > Math.PI)
@@ -72,21 +147,6 @@ export class Robot {
             // Stop moving when turning significantly
             this.stopRobot();
         }
-    }
-    // moveBackward() {
-    //     this.vr = -this.minspeed;
-    //     this.vl = -this.minspeed / 2;
-    //     // console.log(`move_backward: vl = ${this.vl}, vr = ${this.vr}`);
-    // }
-    stopRobot() {
-        this.vr = 0;
-        this.vl = 0;
-        // console.log(`move_backward: vl = ${this.vl}, vr = ${this.vr}`);
-    }
-    moveForward() {
-        this.vr = this.minspeed;
-        this.vl = this.minspeed;
-        // console.log(`move_forward: vl: ${this.vl}, vr: ${this.vr}`);
     }
     kinematics(dt) {
         // console.log(`Before kinematics: x: ${this.x}, y: ${this.y}, heading: ${this.heading}`);

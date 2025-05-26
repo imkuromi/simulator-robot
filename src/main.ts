@@ -19,13 +19,9 @@ window.addEventListener("DOMContentLoaded", () => {
     canvas.width = MAP_DIMENSIONS[0];
     canvas.height = MAP_DIMENSIONS[1];
 
-    // ตั้งค่าขนาดให้ canvas ของ occupancy map ด้วย
     occupancyCanvas.width = MAP_DIMENSIONS[0];
     occupancyCanvas.height = MAP_DIMENSIONS[1];
-    // อาจจะต้องการปรับสเกล occupancy map ให้เล็กลงก็ได้ เช่น
-    // occupancyCanvas.width = MAP_DIMENSIONS[0] / 2;
-    // occupancyCanvas.height = MAP_DIMENSIONS[1] / 2;
-    // ถ้าปรับสเกล ต้องปรับการวาดใน OccupancyGridMap หรือสเกล context ตอนวาด
+
     let currentTarget: [number, number] | null = null;
     const CELL_SIZE = 10;
     // OccupancyGridMap ยังคงใช้ 'canvas' (simulator canvas) สำหรับการ ray casting อ่าน map.png
@@ -33,16 +29,11 @@ window.addEventListener("DOMContentLoaded", () => {
 
     const start: [number, number] = [80, 80];
     const robot = new Robot(start, 0.01 * 3779.52);
-    const sensorRange: [number, number] = [150, (40 * Math.PI) / 180];
-    //ตรวจจับได้ไกล 250px และมุมตรวจจับ 40 องศา (แปลงเป็นเรเดียน)
-    //(40 * Math.PI) / 180 เป็นสูตรที่ใช้ แปลงองศา (degrees) เป็นเรเดียน (radians)
-    //เพราะใน JavaScript (และคณิตศาสตร์ทั่วไป) มุมในฟังก์ชันตรีโกณมิติเช่น Math.sin(), Math.cos() ฯลฯ ต้องอยู่ใน
-    //เรเดียน = องศา × (π / 180)
-    //(40 * Math.PI) / 180 คือการแปลงมุม 40 องศาให้กลายเป็น 0.6981 เรเดียน
+    const sensorRange: [number, number] = [120, (45 * Math.PI) / 180];
+
     const ultrasonic = new Ultrasonic(sensorRange, canvas);
 
-    // ใช้ sensorRange[0] (ค่าระยะของ Ultrasonic) เป็น range ของ Lidar และใช้มุมเดียวกับ ultrasonic
-    const lidar = new Lidar(sensorRange[0], 1, 360, canvas);
+    const lidar = new Lidar(sensorRange[0] - 20, 1, 360, canvas);
 
     let lastTime = performance.now();
 
@@ -74,20 +65,15 @@ window.addEventListener("DOMContentLoaded", () => {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(mapImage, 0, 0);
 
-        const pointCloud = ultrasonic.senseObstacles(robot.x, robot.y, robot.heading, 10);
+        const pointCloud = ultrasonic.senseObstacles(robot.x, robot.y, robot.heading, 15);
         const lidarPoints = lidar.scan(robot.x, robot.y, robot.heading);
 
         occupancyMap.updateWithLidarData(robot.x, robot.y, robot.heading, lidar);
-        console.log(`current target: ${currentTarget ? `[${currentTarget}]` : "null"}`)
         // Handle target sequence
         if (currentTarget) {
             const dist = robot.distanceTo(currentTarget);
-            console.log(`Current position: (${robot.x.toFixed(2)}, ${robot.y.toFixed(2)})`);
-            console.log(`Target position: (${currentTarget[0]}, ${currentTarget[1]})`);
-            console.log(`Distance to target: ${dist.toFixed(2)}`);
 
             if (robot.hasReachedTarget(currentTarget)) {
-                console.log("Target reached!");
                 currentTarget = null;
             } else {
                 robot.avoidObstacles(pointCloud, dt, currentTarget);
@@ -99,9 +85,8 @@ window.addEventListener("DOMContentLoaded", () => {
             const frontiers = occupancyMap.detectFrontiers();
             if (frontiers.length > 0) {
                 frontiers.sort((a, b) => robot.distanceTo(a) - robot.distanceTo(b));
-                // console.log(frontiers)
+                //
                 currentTarget = frontiers[0];
-                console.log(`New target acquired: [${currentTarget[0]}, ${currentTarget[1]}]`);
             } else {
                 robot.vl = 0;
                 robot.vr = 0;
