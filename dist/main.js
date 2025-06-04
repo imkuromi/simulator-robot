@@ -9,7 +9,7 @@ window.addEventListener("DOMContentLoaded", () => {
     const occupancyCtx = occupancyCanvas.getContext("2d");
     const mapImage = new Image();
     // mapImage.src = "images/map_5.png";
-    mapImage.src = "images/map_7.png";
+    mapImage.src = "images/obstacles_map.png";
     const robotImage = new Image();
     robotImage.src = "images/robot.png";
     // const MAP_DIMENSIONS: [number, number] = [1200, 600];
@@ -23,10 +23,10 @@ window.addEventListener("DOMContentLoaded", () => {
     // OccupancyGridMap ยังคงใช้ 'canvas' (simulator canvas) สำหรับการ ray casting อ่าน map.png
     const occupancyMap = new OccupancyGridMap(MAP_DIMENSIONS[0], MAP_DIMENSIONS[1], CELL_SIZE, canvas);
     const start = [80, 80];
-    const robot = new Robot(start, 0.01 * 3779.52);
+    const robot = new Robot(start, robotImage.width);
     const sensorRange = [120, (45 * Math.PI) / 180];
     const ultrasonic = new Ultrasonic(sensorRange, canvas);
-    const lidar = new Lidar(sensorRange[0] - 20, 1, 360, canvas);
+    const lidar = new Lidar(sensorRange[0], 1, 360, canvas);
     let lastTime = performance.now();
     //บันทึกเวลาปัจจุบัน เพื่อใช้คำนวณเวลาที่ผ่านไปในแต่ละรอบการวาด
     function drawRobot(x, y, heading) {
@@ -55,7 +55,6 @@ window.addEventListener("DOMContentLoaded", () => {
         occupancyMap.updateWithLidarData(robot.x, robot.y, robot.heading, lidar);
         // Handle target sequence
         if (currentTarget) {
-            const dist = robot.distanceTo(currentTarget);
             if (robot.hasReachedTarget(currentTarget)) {
                 currentTarget = null;
             }

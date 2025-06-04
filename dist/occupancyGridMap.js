@@ -90,9 +90,9 @@ export class OccupancyGridMap {
             for (let j = 0; j < this.gridHeight; j++) {
                 const worldX = this.mapOriginX + i * this.cellSize;
                 const worldY = this.mapOriginY + j * this.cellSize;
-                let color = "rgba(200, 200, 200, 0.2)"; // UNKNOWN
+                let color = "rgba(200, 200, 200, 0.7)"; // UNKNOWN
                 if (this.grid[i][j] === CELL_STATE.FREE) {
-                    color = "rgba(255, 255, 255, 0.3)"; // FREE
+                    color = "rgba(255, 255, 255, 1)"; // FREE
                 }
                 else if (this.grid[i][j] === CELL_STATE.OCCUPIED) {
                     color = "rgba(50, 50, 50, 0.6)"; // OCCUPIED
@@ -104,37 +104,11 @@ export class OccupancyGridMap {
         // วาด current target ถ้ามี
         if (currentTarget) {
             ctx.beginPath();
-            ctx.arc(currentTarget[0], currentTarget[1], 8, 0, Math.PI * 2);
+            ctx.arc(currentTarget[0], currentTarget[1], 7, 0, Math.PI * 2);
             ctx.fillStyle = "rgba(255, 0, 0, 1)"; // สีแดง
             ctx.fill();
         }
     }
-    // detectFrontiers(): [number, number][] {
-    //     const frontiers: [number, number][] = [];
-    //     const grid = this.grid;
-    //     const CELL_SIZE = this.cellSize;
-    //     // console.log(`grid[0] ${grid[0]}`)
-    //     // console.log(`grid length ${grid.length}`)
-    //     // Iterate over the entire grid to find `UNKNOWN` cells next to `FREE` cells
-    //     for (let x = 1; x < grid.length - 1; x++) {
-    //         for (let y = 1; y < grid[0].length - 1; y++) {
-    //             if (grid[x][y] === CELL_STATE.FREE) { // Unexplored cell
-    //                 const neighbors = [
-    //                     // grid[x + 1][y], grid[x - 1][y],  // Right/Left
-    //                     // grid[x][y + 1], grid[x][y - 1],  // Up/Down
-    //                     grid[x + 1][y], grid[x - 1][y],
-    //                     grid[x][y + 1], grid[x][y - 1],
-    //                     grid[x + 1][y + 1], grid[x - 1][y - 1],
-    //                     grid[x + 1][y - 1], grid[x - 1][y + 1],
-    //                 ];
-    //                 if (neighbors.includes(CELL_STATE.UNKNOWN)) { // Check if adjacent to free space
-    //                     frontiers.push([x * CELL_SIZE, y * CELL_SIZE]);
-    //                 }
-    //             }
-    //         }
-    //     }
-    //     return frontiers;
-    // }
     detectFrontiers() {
         const frontiers = [];
         const grid = this.grid;
@@ -143,17 +117,17 @@ export class OccupancyGridMap {
         for (let x = 1; x < grid.length - 1; x++) {
             for (let y = 1; y < grid[0].length - 1; y++) {
                 // FIXED: Check if current cell is UNKNOWN (potential frontier)
-                if (grid[x][y] === CELL_STATE.UNKNOWN && grid[x][y + 1] !== CELL_STATE.OCCUPIED) {
+                if (grid[x][y] === CELL_STATE.UNKNOWN) {
                     // Check 8-connected neighbors for FREE cells
                     const neighbors = [
                         grid[x + 1][y], // Right
                         grid[x - 1][y], // Left
                         grid[x][y + 1], // Down
                         grid[x][y - 1], // Up
-                        grid[x + 1][y + 1], // Bottom-right
-                        grid[x - 1][y - 1], // Top-left
-                        grid[x + 1][y - 1], // Top-right
-                        grid[x - 1][y + 1], // Bottom-left
+                        // grid[x + 1][y + 1], // Bottom-right
+                        // grid[x - 1][y - 1], // Top-left
+                        // grid[x + 1][y - 1], // Top-right
+                        // grid[x - 1][y + 1], // Bottom-left
                     ];
                     // FIXED: If any neighbor is FREE, this UNKNOWN cell is a frontier
                     if (neighbors.includes(CELL_STATE.FREE)) {

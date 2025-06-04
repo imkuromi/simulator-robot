@@ -5,11 +5,6 @@ let distance = (p1: [number, number], p2: [number, number]): number => {
 }
 
 export class Robot {
-    // Add these properties to your Robot class if they don't exist
-
-    private isAvoiding: boolean = false;
-    private min_obs_dist: number = 100;
-    private TURN_SPEED: number = Math.PI / 4; // 45 degrees per second
     m2p = 3779.52;
     w: number;
     x: number;
@@ -20,15 +15,14 @@ export class Robot {
     maxspeed: number;
     minspeed: number;
     avoidanceAngle: number = 0;
-    DISTANCE_THRESHOLD: number = 70; // pixels
-    delay:number = 5;
-
+    isAvoiding: boolean = false;
+    min_obs_dist: number = 70;
+    TURN_SPEED: number = Math.PI / 4; // 45 degrees per second
     // Add these new properties for managing 360-degree turn
-    private is360Turning: boolean = false;
-    private readonly FULL_ROTATION = 2 * Math.PI;
-    private turnProgress: number = 0;
-
-    // private readonly TURN_SPEED: number = Math.PI; // 1 rotation per second
+    is360Turning: boolean = false;
+    FULL_ROTATION:number = 2 * Math.PI;
+    turnProgress: number = 0;
+    turnDistanceThreshold: number = 120;
 
     // Add new properties for sensor sections
     sensorSections: { [key: number]: [number, number][] } = {
@@ -57,38 +51,28 @@ export class Robot {
         const minDistances = {
             left: this.getMinDistance(leftPoints),
             center: this.getMinDistance(centerPoints),
-            right: this.getMinDistance(rightPoints)
+            right: this.getMinDistance(rightPoints),
         };
-
-        // First, check if center is clear
-        if (minDistances.center > this.min_obs_dist) {
-            // Center is clear, we can move forward
-            this.isAvoiding = false;
-            this.is360Turning = false;
-            if (target) {
-                this.moveToward(target[0], target[1], dt);
-            } else {
-                this.moveForward();
-            }
-            return;
+        const allFree = Object.values(minDistances).every(dist => dist > this.turnDistanceThreshold);
+        if (allFree) {
+            this.moveForward();
         }
-
         // If center is blocked, check if all sections are blocked
-        const allBlocked = Object.values(minDistances).every(dist => dist < this.min_obs_dist);
-        console.log(allBlocked);
+        const allBlocked = Object.values(minDistances).every(dist => dist < this.turnDistanceThreshold);
 
         if (allBlocked) {
             // Start spinning in place
             if (!this.is360Turning) {
                 this.is360Turning = true;
                 this.turnProgress = 0;
-                this.stopRobot();
+                // this.stopRobot()
+                this.moveBackward();
                 this.spinInPlace();
             }
-
             // Continue turning until we complete 360 degrees
             if (this.turnProgress < this.FULL_ROTATION) {
-                this.turnProgress += Math.abs(this.vr - this.vl) / this.w * dt;
+                // this.turnProgress += Math.abs(this.vr - this.vl) / this.w * dt;
+                this.turnProgress += Math.PI;
                 return;
             } else {
                 // Reset turning state after completing 360 degrees
@@ -101,11 +85,18 @@ export class Robot {
             if (!this.isAvoiding) {
                 this.isAvoiding = true;
                 this.stopRobot();
+                Math.random() > 0.5 ? this.avoidanceAngle = -this.TURN_SPEED * dt : this.avoidanceAngle = this.TURN_SPEED * dt;
                 // Choose the direction with more space
-                this.avoidanceAngle = minDistances.left > minDistances.right 
-                    ? -Math.PI/4  // Turn left
-                    : Math.PI/4;  // Turn right
             }
+            this.heading += this.avoidanceAngle * this.TURN_SPEED * dt;
+            return;
+        } else if (minDistances.left > minDistances.right) {
+            this.avoidanceAngle = this.TURN_SPEED * dt; // turn rigth
+            this.heading += this.avoidanceAngle * this.TURN_SPEED * dt;
+            return;
+        } else if (minDistances.right > minDistances.left) {
+            this.avoidanceAngle = -this.TURN_SPEED * dt; // turn left
+
             this.heading += this.avoidanceAngle * this.TURN_SPEED * dt;
             return;
         }
@@ -113,28 +104,26 @@ export class Robot {
         // No obstacles in center
         this.isAvoiding = false;
         this.is360Turning = false;
-        
+
         if (target) {
             this.moveToward(target[0], target[1], dt);
         } else {
-            this.moveForward();
+            // this.moveForward();
+            this.stopRobot();
         }
     }
 
     // Add new method for spinning in place
-    private spinInPlace() {
+    spinInPlace() {
         this.vr = this.minspeed;    // Right wheel forward
         this.vl = -this.minspeed;   // Left wheel backward
     }
 
-    private getMinDistance(points: [number, number][]): number {
+    getMinDistance(points: [number, number][]): number {
         if (points.length === 0) return Infinity;
 
         return Math.min(...points.map(point =>
-            Math.sqrt(
-                Math.pow(point[0] - this.x, 2) +
-                Math.pow(point[1] - this.y, 2)
-            )
+            Math.sqrt(Math.pow(point[0] - this.x, 2) + Math.pow(point[1] - this.y, 2))
         ));
     }
 
@@ -149,7 +138,12 @@ export class Robot {
         this.vr = this.minspeed;
     }
 
-    private normalizeAngle(angle: number): number {
+    moveBackward() {
+        this.vl = -this.minspeed;
+        this.vr = -this.minspeed;
+    }
+
+    normalizeAngle(angle: number): number {
         while (angle > Math.PI) angle -= 2 * Math.PI;
         while (angle < -Math.PI) angle += 2 * Math.PI;
         return angle;
@@ -164,7 +158,7 @@ export class Robot {
         const angleDiff = this.normalizeAngle(targetAngle - this.heading);
 
         // Adjust heading more aggressively when close to the target
-        const dist = Math.sqrt((targetX - this.x) ** 2 + (targetY - this.y) ** 2);
+        const dist = distance([this.x, this.y], [targetX, targetY]);
         const turnSpeed = dist < 50 ? this.TURN_SPEED * 2 : this.TURN_SPEED;
 
         this.heading = this.normalizeAngle(
@@ -172,7 +166,7 @@ export class Robot {
         );
 
         // Move forward if roughly pointing at the target (an increased angle threshold)
-        if (Math.abs(angleDiff) < Math.PI / 3) { // Changed from PI/4 to PI/3
+        if (Math.abs(angleDiff) < Math.PI / 4) { // Changed from PI/4 to PI/3
             this.moveForward();
         } else {
             // Stop moving when turning significantly
@@ -181,7 +175,6 @@ export class Robot {
     }
 
     kinematics(dt: number) {
-        // console.log(`Before kinematics: x: ${this.x}, y: ${this.y}, heading: ${this.heading}`);
         this.x += ((this.vl + this.vr) / 2) * Math.cos(this.heading) * dt;
         this.y -= ((this.vl + this.vr) / 2) * Math.sin(this.heading) * dt;
         this.heading += (this.vr - this.vl) / this.w * dt;
@@ -191,12 +184,12 @@ export class Robot {
         }
         this.vr = Math.max(Math.min(this.maxspeed, this.vr), this.minspeed);
         this.vl = Math.max(Math.min(this.maxspeed, this.vl), this.minspeed);
-        // console.log(`After kinematics: x: ${this.x}, y: ${this.heading}`);
     }
 
     hasReachedTarget(currentTarget: [number, number]): boolean {
-        return this.distanceTo(currentTarget) < this.DISTANCE_THRESHOLD;
+        return this.distanceTo(currentTarget) < this.min_obs_dist;
     }
+
 }
 
 export class Ultrasonic {
@@ -218,35 +211,24 @@ export class Ultrasonic {
         let obstacles: [number, number][] = [];
         let start_angle = heading - this.sensor_range[1];
         let finish_angle = heading + this.sensor_range[1];
-        // console.log(`start_angle: ${start_angle}, finish_angle: ${finish_angle}`)
         let x1 = x;
         let y1 = y;
 
         for (let i = 0; i < index; i++) {
-            // let angle = start_angle + (i * (finish_angle - start_angle)) / index;
             let angle = start_angle + ((i + 0.5) * (finish_angle - start_angle)) / index;
-            // console.log("Angle start - stop:", angle);
             let x2 = x1 + this.sensor_range[0] * Math.cos(angle);
             let y2 = y1 - this.sensor_range[0] * Math.sin(angle);
-            // console.log(`Sensor : ${i + 1}`)
-            // console.log(`Angle : ${angle}`)
-            // console.log(`x2 sensor : ${x2}, y2 sensor : ${y2}`);
 
             for (let j = 0; j < 100; j++) {
                 let u = j / 100;
                 let x = Math.floor(x2 * u + x1 * (1 - u));
                 let y = Math.floor(y2 * u + y1 * (1 - u));
-                // console.log(`(x, y) : (${x}, ${y})`);
 
                 if ((x > 0 && x < this.mapWidth) && (y > 0 && y < this.mapHeight)) {
                     let imageData = this.ctx.getImageData(x, y, 1, 1).data;
                     this.ctx.fillStyle = "rgb(91, 107, 208)";
                     this.ctx.fillRect(x, y, 2, 1);
-                    // console.log("before color :")
-                    // console.log(imageData)
-                    if (imageData[0] < 20 && imageData[1] < 20 && imageData[2] < 20) {
-                        // console.log(`after : ${imageData}`)
-                        // console.log("Obstacle detected at:", x, y);
+                    if (imageData[0] === 0 && imageData[1] === 0 && imageData[2] === 0) {
                         obstacles.push([x, y]);
                         break;
                     }
@@ -254,8 +236,6 @@ export class Ultrasonic {
             }
 
         }
-        // console.log("obstacles")
-        // console.log(obstacles)
         return obstacles;
     }
 }
