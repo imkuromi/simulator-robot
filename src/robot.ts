@@ -16,20 +16,14 @@ export class Robot {
     minspeed: number;
     avoidanceAngle: number = 0;
     isAvoiding: boolean = false;
-    min_obs_dist: number = 70;
+    min_obs_dist: number = 100;
     TURN_SPEED: number = Math.PI / 4; // 45 degrees per second
     // Add these new properties for managing 360-degree turn
     is360Turning: boolean = false;
-    FULL_ROTATION:number = 2 * Math.PI;
+    FULL_ROTATION: number = 2 * Math.PI;
     turnProgress: number = 0;
-    turnDistanceThreshold: number = 120;
-
-    // Add new properties for sensor sections
-    sensorSections: { [key: number]: [number, number][] } = {
-        0: [], // Left section
-        1: [], // Center section
-        2: [], // Right section
-    };
+    isStuck: boolean = false;
+    timeOut: number = 5;
 
     constructor(startpos: [number, number], width: number) {
         this.w = width;
@@ -53,26 +47,26 @@ export class Robot {
             center: this.getMinDistance(centerPoints),
             right: this.getMinDistance(rightPoints),
         };
-        const allFree = Object.values(minDistances).every(dist => dist > this.turnDistanceThreshold);
+        const allFree = Object.values(minDistances).every(dist => dist > this.min_obs_dist);
+
         if (allFree) {
             this.moveForward();
         }
         // If center is blocked, check if all sections are blocked
-        const allBlocked = Object.values(minDistances).every(dist => dist < this.turnDistanceThreshold);
+        const allBlocked = Object.values(minDistances).every(dist => dist < this.min_obs_dist);
 
         if (allBlocked) {
             // Start spinning in place
             if (!this.is360Turning) {
                 this.is360Turning = true;
                 this.turnProgress = 0;
-                // this.stopRobot()
-                this.moveBackward();
+                this.moveBackward(); // First back up
                 this.spinInPlace();
             }
             // Continue turning until we complete 360 degrees
             if (this.turnProgress < this.FULL_ROTATION) {
-                // this.turnProgress += Math.abs(this.vr - this.vl) / this.w * dt;
-                this.turnProgress += Math.PI;
+                this.turnProgress += Math.abs(this.vr - this.vl) / this.w * dt; // Calculate actual turn progress
+                this.heading += this.turnProgress;
                 return;
             } else {
                 // Reset turning state after completing 360 degrees
@@ -85,21 +79,22 @@ export class Robot {
             if (!this.isAvoiding) {
                 this.isAvoiding = true;
                 this.stopRobot();
-                Math.random() > 0.5 ? this.avoidanceAngle = -this.TURN_SPEED * dt : this.avoidanceAngle = this.TURN_SPEED * dt;
+                // Math.random() > 0.5 ? this.avoidanceAngle = -this.TURN_SPEED : this.avoidanceAngle = this.TURN_SPEED;
                 // Choose the direction with more space
+                this.avoidanceAngle = minDistances.left > minDistances.right ? -this.TURN_SPEED : this.TURN_SPEED;
             }
             this.heading += this.avoidanceAngle * this.TURN_SPEED * dt;
             return;
-        } else if (minDistances.left > minDistances.right) {
-            this.avoidanceAngle = this.TURN_SPEED * dt; // turn rigth
-            this.heading += this.avoidanceAngle * this.TURN_SPEED * dt;
-            return;
-        } else if (minDistances.right > minDistances.left) {
-            this.avoidanceAngle = -this.TURN_SPEED * dt; // turn left
-
-            this.heading += this.avoidanceAngle * this.TURN_SPEED * dt;
-            return;
         }
+        // } else if (minDistances.left > minDistances.right) {
+        //     this.avoidanceAngle = this.TURN_SPEED; // turn rigth
+        //     this.heading += this.avoidanceAngle * this.TURN_SPEED * dt;
+        //     return;
+        // } else if (minDistances.right > minDistances.left) {
+        //     this.avoidanceAngle = -this.TURN_SPEED; // turn left
+        //     this.heading += this.avoidanceAngle * this.TURN_SPEED * dt;
+        //     return;
+        // }
 
         // No obstacles in center
         this.isAvoiding = false;
@@ -121,10 +116,7 @@ export class Robot {
 
     getMinDistance(points: [number, number][]): number {
         if (points.length === 0) return Infinity;
-
-        return Math.min(...points.map(point =>
-            Math.sqrt(Math.pow(point[0] - this.x, 2) + Math.pow(point[1] - this.y, 2))
-        ));
+        return Math.min(...points.map(point => distance([this.x, this.y], point)));
     }
 
     // Make sure you have these methods in your Robot class
@@ -158,8 +150,9 @@ export class Robot {
         const angleDiff = this.normalizeAngle(targetAngle - this.heading);
 
         // Adjust heading more aggressively when close to the target
-        const dist = distance([this.x, this.y], [targetX, targetY]);
-        const turnSpeed = dist < 50 ? this.TURN_SPEED * 2 : this.TURN_SPEED;
+        // const dist = distance([this.x, this.y], [targetX, targetY]);
+        // const turnSpeed = dist < 50 ? this.TURN_SPEED * 2 : this.TURN_SPEED;
+        const turnSpeed = this.TURN_SPEED;
 
         this.heading = this.normalizeAngle(
             this.heading + Math.sign(angleDiff) * turnSpeed * dt
@@ -187,7 +180,23 @@ export class Robot {
     }
 
     hasReachedTarget(currentTarget: [number, number]): boolean {
-        return this.distanceTo(currentTarget) < this.min_obs_dist;
+        return this.distanceTo(currentTarget) < 80;
+    }
+
+    checkIsStuck(hasReachedTarget: boolean, dt: number) {
+
+        if (!hasReachedTarget) {
+            this.timeOut -= dt;
+        }
+        console.log(this.timeOut);
+        if (this.timeOut <= 0) {
+            this.isStuck = true;
+            this.timeOut = 5;
+            console.log(this.isStuck);
+            return this.isStuck;
+        }
+        this.isStuck = false;
+        return this.isStuck;
     }
 
 }

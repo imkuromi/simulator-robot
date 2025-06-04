@@ -57,6 +57,15 @@ window.addEventListener("DOMContentLoaded", () => {
         if (currentTarget) {
             if (robot.hasReachedTarget(currentTarget)) {
                 currentTarget = null;
+                robot.isStuck = false;
+                robot.timeOut = 5;
+            }
+            else if (robot.checkIsStuck(robot.hasReachedTarget(currentTarget), dt)) {
+                const frontiers = occupancyMap.detectFrontiers();
+                if (frontiers.length > 0) {
+                    frontiers.sort((a, b) => robot.distanceTo(a) - robot.distanceTo(b));
+                    currentTarget = frontiers[0];
+                }
             }
             else {
                 robot.avoidObstacles(pointCloud, dt, currentTarget);
@@ -67,7 +76,6 @@ window.addEventListener("DOMContentLoaded", () => {
             const frontiers = occupancyMap.detectFrontiers();
             if (frontiers.length > 0) {
                 frontiers.sort((a, b) => robot.distanceTo(a) - robot.distanceTo(b));
-                //
                 currentTarget = frontiers[0];
             }
             else {
