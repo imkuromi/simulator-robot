@@ -1,17 +1,17 @@
-import {Robot, Ultrasonic} from "./robot.js";
-import {Lidar} from "./lidar.js";
-import {OccupancyGridMap} from "./occupancyGridMap.js"
+import { Robot, Ultrasonic } from "./robot.js";
+import { Lidar } from "./lidar.js";
+import { OccupancyGridMap } from "./occupancyGridMap.js"
 
 window.addEventListener("DOMContentLoaded", () => {
     const canvas = document.getElementById("simulator") as HTMLCanvasElement;
-    const ctx = canvas.getContext("2d", {willReadFrequently: true})!;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
 
     // Canvas ใหม่สำหรับ Occupancy Grid Map
     const occupancyCanvas = document.getElementById("occupancyMapCanvas") as HTMLCanvasElement;
     const occupancyCtx = occupancyCanvas.getContext("2d")!;
     const mapImage = new Image();
     // mapImage.src = "images/map_5.png";
-    mapImage.src = "images/obstacles_map.png";
+    mapImage.src = "images/map_7.png";
     const robotImage = new Image();
     robotImage.src = "images/robot.png";
     // const MAP_DIMENSIONS: [number, number] = [1200, 600];
@@ -79,7 +79,9 @@ window.addEventListener("DOMContentLoaded", () => {
                 const frontiers = occupancyMap.detectFrontiers();
                 if (frontiers.length > 0) {
                     frontiers.sort((a, b) => robot.distanceTo(a) - robot.distanceTo(b));
-                    currentTarget = frontiers[0];
+
+                    let randomIndex = Math.floor(Math.random() * frontiers.length / 2);
+                    currentTarget = frontiers[randomIndex];
                 }
             } else {
                 robot.avoidObstacles(pointCloud, dt, currentTarget);
